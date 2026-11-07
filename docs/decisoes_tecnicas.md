@@ -117,6 +117,8 @@ O `type` é uma referência relativa `/problems/<código>` (ex.: `/problems/seat
 
 Os nomes das constraints são parte desse contrato e não devem ser renomeados sem atualizar o tradutor.
 
+Erros de autenticação (401): `invalid-credentials` (login), `missing-token` (sem `Authorization: Bearer`) e `invalid-token` (assinatura, audiência ou validade inválidas).
+
 Outros erros de domínio: `reservation-expired` e `reservation-cancelled` (409, ao confirmar), `seat-under-maintenance` (409), e pedidos inválidos (400): mais de 6 assentos, assento repetido ou assento de outra Sala.
 
 ## Autenticação
@@ -126,6 +128,11 @@ Outros erros de domínio: `reservation-expired` e `reservation-cancelled` (409, 
 - O token leva `aud` (`cinemotion-customer` / `cinemotion-admin`), e cada API rejeita tokens da outra audiência.
 - `POST /auth/register` existe apenas na API cliente e sempre cria `customer`.
 - Administradores existem apenas via seed/migration. Não há endpoint para promover usuários.
+- **Um segredo por API** (HS256, com `jose`): na Lambda, `JWT_SECRET`; localmente, `CUSTOMER_JWT_SECRET` e `ADMIN_JWT_SECRET`. Mesmo que um segredo vaze, ele não serve para emitir tokens da outra API. O token leva `sub`, `email`, `role`, `iss` (`cinemotion`), `aud` e `exp` (padrão de 1h, configurável em `JWT_TTL_SECONDS`).
+- `GET /auth/me` devolve o usuário do token, nas duas APIs.
+- Senhas com bcrypt (`bcryptjs`, em JS puro, sem binário nativo na Lambda), custo 10. Mínimo de 8 caracteres e máximo de 72 bytes, que é o limite do bcrypt.
+- O login dá o mesmo erro (`invalid-credentials`) para e-mail inexistente, senha errada e usuário de outro papel. Quando o e-mail não existe, a senha é comparada mesmo assim com um hash descartável, para que o tempo de resposta não revele quais e-mails estão cadastrados.
+- Respostas 401 trazem `WWW-Authenticate: Bearer`.
 
 ### Separação no banco
 
