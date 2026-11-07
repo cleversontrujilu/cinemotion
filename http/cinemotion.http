@@ -1,9 +1,341 @@
-# Collection dos principais fluxos do Cinemotion (REST Client / JetBrains HTTP Client).
-# Uma seção por API. Ajuste as URLs para o ambiente local ou para o deploy na AWS.
+# Collection dos principais fluxos do Cinemotion.
+#
+# Formato: VS Code REST Client (extensão humao.rest-client). As requisições usam respostas
+# anteriores (`# @name` + `{{nome.response.body.$.campo}}`), então rode na ordem, de cima
+# para baixo.
+#
+# Pré-requisitos:
+#   1. Banco com schema e seed:  npm run db:reset -w api   (cria admin@cinemotion.dev)
+#   2. APIs no ar:               npm run dev -w api        (cliente :3000, admin :3001/admin)
+#
+# A collection cria a própria Sala, Filme e Sessões, com nomes e e-mail únicos por execução,
+# então pode ser rodada várias vezes sem limpar o banco.
+#
+# Assentos: a Sala criada tem 5 fileiras × 8 e o mapa vem ordenado (A1, A2, …, A8, B1, …),
+# então `seats[2]` é A3 e `seats[8]` é B1.
+#
+# Para o ambiente publicado, troque as duas URLs abaixo.
 
 @customerUrl = http://localhost:3000
 @adminUrl = http://localhost:3001/admin
+@adminEmail = admin@cinemotion.dev
+@password = Senha@123
 
-### ============================== API cliente ==============================
+# Valores tirados das respostas anteriores (resolvidos na hora do uso)
+@adminToken = {{adminLogin.response.body.$.accessToken}}
+@customerToken = {{customerLogin.response.body.$.accessToken}}
+@theaterId = {{createTheater.response.body.$.id}}
+@sessionId = {{createSession.response.body.$.id}}
+@soonSessionId = {{createSoonSession.response.body.$.id}}
+@reservationId = {{reserve.response.body.$.id}}
 
-### ============================== API admin ================================
+# Assentos da Sala criada
+@seatA3 = {{createTheater.response.body.$.seats[2].id}}
+@seatA4 = {{createTheater.response.body.$.seats[3].id}}
+@seatA5 = {{createTheater.response.body.$.seats[4].id}}
+@seatA6 = {{createTheater.response.body.$.seats[5].id}}
+@seatB1 = {{createTheater.response.body.$.seats[8].id}}
+
+
+### ═══════════════════════════════ API do Administrador ═══════════════════════════════
+
+### Saúde da API admin
+GET {{adminUrl}}/health
+
+### Login do administrador
+# @name adminLogin
+POST {{adminUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}"
+}
+
+### Quem sou eu (admin)
+GET {{adminUrl}}/auth/me
+Authorization: Bearer {{adminToken}}
+
+### Cria uma Sala 5×8 (A1–E8): A1 e A2 acessíveis, E8 em manutenção
+# @name createTheater
+POST {{adminUrl}}/theaters
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Sala HTTP {{$timestamp}}",
+  "rows": 5,
+  "seatsPerRow": 8,
+  "accessibleSeats": ["A1", "A2"],
+  "maintenanceSeats": ["E8"]
+}
+
+### Lista as Salas
+GET {{adminUrl}}/theaters
+Authorization: Bearer {{adminToken}}
+
+### Coloca B1 em manutenção (o mapa não muda, só as marcações)
+PATCH {{adminUrl}}/theaters/{{theaterId}}/seats
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "seats": [{ "seat": "B1", "underMaintenance": true }]
+}
+
+### Cadastra um Filme
+# @name createMovie
+POST {{adminUrl}}/movies
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Filme HTTP {{$timestamp}}",
+  "duration": 104
+}
+
+### Cria uma Sessão amanhã (fim = início + 104 min + 15 min de limpeza)
+# @name createSession
+POST {{adminUrl}}/sessions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "movieId": "{{createMovie.response.body.$.id}}",
+  "theaterId": "{{theaterId}}",
+  "startsAt": "{{$datetime iso8601 1 d}}",
+  "price": 32.5
+}
+
+### Cria uma Sessão daqui a 1 hora (usada no cancelamento fora do prazo)
+# @name createSoonSession
+POST {{adminUrl}}/sessions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "movieId": "{{createMovie.response.body.$.id}}",
+  "theaterId": "{{theaterId}}",
+  "startsAt": "{{$datetime iso8601 1 h}}",
+  "price": 25
+}
+
+### Lista as Sessões da Sala
+GET {{adminUrl}}/sessions?theaterId={{theaterId}}
+Authorization: Bearer {{adminToken}}
+
+### ✗ 409 session-overlap: começa 30 min depois da Sessão de amanhã, na mesma Sala
+POST {{adminUrl}}/sessions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "movieId": "{{createMovie.response.body.$.id}}",
+  "theaterId": "{{theaterId}}",
+  "startsAt": "{{$datetime iso8601 1470 m}}",
+  "price": 32.5
+}
+
+### ✗ 400 session-starts-in-past
+POST {{adminUrl}}/sessions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "movieId": "{{createMovie.response.body.$.id}}",
+  "theaterId": "{{theaterId}}",
+  "startsAt": "{{$datetime iso8601 -1 h}}",
+  "price": 32.5
+}
+
+### ✗ 400 validation-error: data sem fuso e preço com 3 casas
+POST {{adminUrl}}/sessions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "movieId": "{{createMovie.response.body.$.id}}",
+  "theaterId": "{{theaterId}}",
+  "startsAt": "2030-01-05T19:30:00",
+  "price": 10.555
+}
+
+### ✗ 401 missing-token
+GET {{adminUrl}}/theaters
+
+
+### ═════════════════════════════════ API do Cliente ═════════════════════════════════
+
+### Saúde da API cliente
+GET {{customerUrl}}/health
+
+### Catálogo público: Filmes
+GET {{customerUrl}}/movies
+
+### Catálogo público: Sessões futuras da Sala criada (filtros: movieId, theaterId, date, page, pageSize)
+GET {{customerUrl}}/sessions?theaterId={{theaterId}}&pageSize=10
+
+### Catálogo público: detalhe da Sessão
+GET {{customerUrl}}/sessions/{{sessionId}}
+
+### Mapa de assentos (público): E8 e B1 aparecem como unavailable
+GET {{customerUrl}}/sessions/{{sessionId}}/seats
+
+### Cadastro de cliente (e-mail único por execução)
+# @name register
+POST {{customerUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "cliente.{{$timestamp}}@exemplo.com",
+  "password": "{{password}}"
+}
+
+### ✗ 409 email-taken: mesmo e-mail
+POST {{customerUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{register.response.body.$.email}}",
+  "password": "{{password}}"
+}
+
+### Login do cliente
+# @name customerLogin
+POST {{customerUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{register.response.body.$.email}}",
+  "password": "{{password}}"
+}
+
+### ✗ 401 invalid-credentials: administrador não entra na API cliente
+POST {{customerUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}"
+}
+
+### Quem sou eu (cliente)
+GET {{customerUrl}}/auth/me
+Authorization: Bearer {{customerToken}}
+
+### Reserva A3 e A4: fica pendente por 10 minutos
+# @name reserve
+POST {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "seatIds": ["{{seatA3}}", "{{seatA4}}"]
+}
+
+### ✗ 409 seat-already-taken: A4 já está retido (conflictingSeats traz A4); A5 não fica retido
+POST {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "seatIds": ["{{seatA4}}", "{{seatA5}}"]
+}
+
+### ✗ 409 seat-under-maintenance: B1
+POST {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "seatIds": ["{{seatB1}}"]
+}
+
+### ✗ 400 validation-error: assento repetido
+POST {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "seatIds": ["{{seatA5}}", "{{seatA5}}"]
+}
+
+### Mapa de assentos: A3 e A4 agora reserved
+GET {{customerUrl}}/sessions/{{sessionId}}/seats
+
+### Confirma a Reserva (pagamento simulado): vira Venda
+POST {{customerUrl}}/reservations/{{reservationId}}/confirm
+Authorization: Bearer {{customerToken}}
+
+### Confirmar de novo é idempotente: devolve a mesma Venda
+POST {{customerUrl}}/reservations/{{reservationId}}/confirm
+Authorization: Bearer {{customerToken}}
+
+### Minhas Reservas
+GET {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+
+### Detalhe da Reserva
+GET {{customerUrl}}/reservations/{{reservationId}}
+Authorization: Bearer {{customerToken}}
+
+### Cancela a Venda (a Sessão é amanhã, dentro do prazo de 2 horas): A3 e A4 voltam a ficar livres
+POST {{customerUrl}}/reservations/{{reservationId}}/cancel
+Authorization: Bearer {{customerToken}}
+
+### Cancelar de novo é idempotente
+POST {{customerUrl}}/reservations/{{reservationId}}/cancel
+Authorization: Bearer {{customerToken}}
+
+### Reserva A6 na Sessão que começa daqui a 1 hora
+# @name soonReserve
+POST {{customerUrl}}/reservations
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{soonSessionId}}",
+  "seatIds": ["{{seatA6}}"]
+}
+
+### Confirma a Reserva da Sessão próxima
+POST {{customerUrl}}/reservations/{{soonReserve.response.body.$.id}}/confirm
+Authorization: Bearer {{customerToken}}
+
+### ✗ 409 cancellation-deadline-passed: faltam menos de 2 horas (deadline traz o limite)
+POST {{customerUrl}}/reservations/{{soonReserve.response.body.$.id}}/cancel
+Authorization: Bearer {{customerToken}}
+
+### ✗ 401 invalid-token: token do cliente não vale na API admin
+GET {{adminUrl}}/theaters
+Authorization: Bearer {{customerToken}}
+
+
+### ═══════════════════ API do Administrador: regras que dependem das Reservas ═══════════════════
+
+### ✗ 409 session-has-active-reservations: a Sessão próxima tem uma Venda
+PATCH {{adminUrl}}/sessions/{{soonSessionId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "price": 30
+}
+
+### ✗ 409 in-use: Sala com Sessões não pode ser excluída
+DELETE {{adminUrl}}/theaters/{{theaterId}}
+Authorization: Bearer {{adminToken}}
+
+### Remarca a Sessão de amanhã (a Reserva foi cancelada, então não há Reserva ativa)
+PATCH {{adminUrl}}/sessions/{{sessionId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "startsAt": "{{$datetime iso8601 2 d}}",
+  "price": 35
+}
