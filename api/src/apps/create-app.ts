@@ -14,12 +14,15 @@ export interface AppDeps {
   pool: Pool;
   auth: AuthConfig;
   clock?: Clock;
+  /** Fuso da rede (filtro por dia). Padrão: America/Sao_Paulo. */
+  timezone?: string;
 }
 
 /** O que cada API recebe para montar as rotas do seu papel. */
 export interface AppContext {
   pool: Pool;
   clock: Clock;
+  timezone: string;
   tokens: TokenIssuer & TokenVerifier;
 }
 
@@ -57,7 +60,7 @@ export function createApp(
     tokens,
     allowRegister: role === 'customer',
   });
-  mountRoutes(router, { pool: deps.pool, clock, tokens });
+  mountRoutes(router, { pool: deps.pool, clock, tokens, timezone: deps.timezone ?? 'America/Sao_Paulo' });
   app.use(router);
 
   app.use(notFoundHandler);

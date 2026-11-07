@@ -27,3 +27,12 @@ export async function withTransaction<T>(
     client.release(broken);
   }
 }
+
+/** Qualquer coisa que execute SQL: o pool (fora de transação) ou um client (dentro). */
+export type Queryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
+
+/** now() do banco: toda regra de tempo usa o relógio do Postgres, nunca o da Lambda. */
+export async function databaseNow(db: Queryable): Promise<Date> {
+  const { rows } = await db.query<{ now: Date }>('SELECT now() AS now');
+  return rows[0]!.now;
+}
