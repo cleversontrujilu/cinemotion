@@ -33,7 +33,7 @@ export async function startTestDatabase(): Promise<TestDatabase> {
       dir: MIGRATIONS_DIR,
       migrationsTable: 'pgmigrations',
       direction,
-      count: direction === 'up' ? Infinity : 1,
+      count: Infinity, // up aplica todas; down desfaz todas
       log: () => {},
     });
   };
@@ -92,6 +92,10 @@ export async function asRole<T>(
  * Pool do dono que já conecta assumindo o role da aplicação (`-c role=...`, o mesmo
  * que SET ROLE), para testar com as permissões reais sem precisar da senha do role.
  */
-export function rolePool(ownerUrl: string, role: 'cinemotion_customer' | 'cinemotion_admin'): pg.Pool {
-  return new pg.Pool({ connectionString: ownerUrl, max: 5, options: `-c role=${role}` });
+export function rolePool(
+  ownerUrl: string,
+  role: 'cinemotion_customer' | 'cinemotion_admin',
+  max = 5,
+): pg.Pool {
+  return new pg.Pool({ connectionString: ownerUrl, max, options: `-c role=${role}` });
 }

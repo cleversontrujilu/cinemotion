@@ -61,8 +61,9 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 
 - O índice único parcial `ux_reservation_seat_session_id_seat_id (session_id, seat_id) WHERE released_at IS NULL` é **a** garantia de que um Assento não fica em duas Reservas ativas.
 - A Reserva é criada numa única transação que insere todos os assentos de uma vez, sem `SELECT ... FOR UPDATE` prévio. Se algum assento já estiver ocupado, a transação inteira é desfeita ("todos ou nenhum").
+- A transação trava a Sessão com `FOR SHARE`, para que o Administrador não a edite no meio da reserva. Como `FOR SHARE` exige privilégio de `UPDATE` e o role do Cliente só lê o catálogo, o lock é feito pela função `lock_session_for_booking` (migration `0002`, `SECURITY DEFINER`, com `EXECUTE` só para `cinemotion_customer`).
 - Na violação de unicidade, a API responde **409** com a lista completa dos assentos em conflito (`conflictingSeats`). Como o Postgres informa só o primeiro, essa lista vem de uma consulta feita depois do rollback.
-- Um teste de integração dispara requisições simultâneas para o mesmo assento e verifica que exatamente uma é aceita. Ele roda contra um PostgreSQL 18 descartável criado pelo **Testcontainers**, com as migrations aplicadas.
+- Um teste de integração dispara 10 requisições simultâneas, de clientes diferentes, para o mesmo assento, e verifica que exatamente uma é aceita. Outro dispara pedidos com assentos sobrepostos e verifica que os perdedores não deixam retenção parcial. Sem o índice único parcial, os dois falham. Ele roda contra um PostgreSQL 18 descartável criado pelo **Testcontainers**, com as migrations aplicadas.
 - Alternativa sem Docker: com `TEST_DATABASE_URL` apontando para um PostgreSQL 18 já rodando (superusuário), os testes criam um banco temporário nesse servidor e o removem no fim.
 
 ### Expiração de Reservas pendentes
@@ -101,6 +102,15 @@ Ver [ADR 0001](./adr/0001-expiracao-preguicosa-de-reservas.md). Resumo:
 - **Edição de Sessão contra Reserva concorrente:** editar ou excluir trava a linha da Sessão (`SELECT ... FOR UPDATE`) antes de checar se há Reserva ativa. A transação de Reserva trava a mesma linha com `FOR SHARE`, então as duas operações nunca se cruzam. Reagendar ou trocar o Filme recalcula o fim com a duração atual do Filme.
 - Ativa = Venda ou Reserva pendente ainda no prazo. A pendente vencida não bloqueia nada (ADR 0001).
 
+### Reservas (API do Cliente)
+
+- `GET /sessions/:id/seats` (público): mapa de ocupação com o estado de cada Assento (`available`, `reserved`, `sold`, `unavailable`) e um resumo das contagens.
+- `POST /reservations` `{ sessionId, seatIds }`, além de `GET /reservations`, `GET /reservations/:id`, `POST /reservations/:id/confirm` e `POST /reservations/:id/cancel`. Todas exigem token de cliente.
+- Os Assentos são identificados por id na entrada, e as respostas trazem também o rótulo (`A1`). A Reserva traz o `total` (preço da Sessão × assentos).
+- **Confirmar e cancelar são idempotentes:** repetir devolve a Reserva no estado atual, sem erro, para que um retry do pagamento não quebre.
+- Reserva de outro Cliente responde 404, sem revelar que ela existe.
+- Na expiração preguiçosa, o `released_at` dos assentos recebe o `expires_at` da Reserva (o instante real em que venceram), e não o momento em que a limpeza rodou.
+
 ### Alterações depois de criados
 
 - Uma Sessão com Reserva ativa não pode ser editada nem excluída (409).
@@ -132,7 +142,10 @@ Erros de autenticação (401): `invalid-credentials` (login), `missing-token` (s
 
 Erros do catálogo: `theater-not-found`, `movie-not-found` e `session-not-found` (404); `unknown-seats` e `session-starts-in-past` (400); `session-has-active-reservations` (409). Remover Sala ou Filme com Sessões, ou Sessão com histórico de Reservas, dá 409 `in-use` (FK `RESTRICT`).
 
-Outros erros de domínio: `reservation-expired` e `reservation-cancelled` (409, ao confirmar), `seat-under-maintenance` (409), e pedidos inválidos (400): mais de 6 assentos, assento repetido ou assento de outra Sala.
+Erros de reserva:
+- 409: `seat-already-taken` (com `conflictingSeats`), `seat-under-maintenance` (com `seats`), `session-already-started`, `reservation-expired`, `reservation-cancelled` e `cancellation-deadline-passed` (com `deadline`).
+- 400: `seats-not-in-session` (assento de outra Sala, com `invalidSeats`) e `validation-error` (mais de 6 assentos ou assento repetido).
+- 404: `reservation-not-found` e `session-not-found`.
 
 ## Autenticação
 
