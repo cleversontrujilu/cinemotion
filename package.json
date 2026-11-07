@@ -7,6 +7,13 @@
     "api",
     "web/*"
   ],
+  "scripts": {
+    "dev:api": "npm run dev -w api",
+    "dev:customer": "npm run dev -w @cinemotion/customer-web",
+    "dev:admin": "npm run dev -w @cinemotion/admin-web",
+    "build:web": "npm run build -w @cinemotion/customer-web && npm run build -w @cinemotion/admin-web",
+    "typecheck:web": "npm run typecheck -w @cinemotion/customer-web && npm run typecheck -w @cinemotion/admin-web"
+  },
   "engines": {
     "node": ">=22"
   }
