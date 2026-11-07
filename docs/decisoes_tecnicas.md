@@ -28,10 +28,9 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 ### APIs
 
 - **Um repositório e um código só, com dois handlers.** O build gera um único artefato. O OpenTofu cria duas Lambdas a partir dele, mudando apenas o `handler` (`customer` / `admin`), e cada handler monta só as rotas do seu papel. O domínio, as migrations e o tradutor de erros existem em uma cópia só.
-- Cada API é uma Lambda própria, atrás do **seu próprio API Gateway HTTP API**, com URL, CORS, throttling e logs no CloudWatch separados.
-- **A API admin responde sob `/admin`** (`/admin/sessions`, `/admin/auth/login`, `/admin/health`), inclusive localmente na porta 3001. A do cliente fica na raiz. Assim as duas não repetem caminhos: cabem num único documento OpenAPI e podem dividir um domínio no futuro.
-- **Um único documento OpenAPI 3.2.0, em `docs/swagger.yaml`**, cobrindo as duas APIs (os caminhos `/admin` apontam para o servidor da 3001, e as tags hierárquicas da 3.2 agrupam cada API). Ele não é servido pelas Lambdas: um gerador de documentação compila `docs/` + `README.md` + o swagger num site estático publicado no S3, com o Swagger UI atual (que suporta a 3.2). Uma checagem compara as rotas do Express com os caminhos do documento. A collection `.http` tem uma seção por API.
-- O CORS de cada API aceita apenas a origem do seu frontend.
+- Cada API é uma Lambda própria, atrás do **seu próprio API Gateway HTTP API**, com throttling e logs no CloudWatch separados.
+- **Cada API responde no domínio do seu frontend, sob `/api`.** A do cliente fica em `/api` (`/api/sessions`, `/api/auth/login`) e a do admin em `/api/admin` (`/api/admin/sessions`), inclusive localmente nas portas 3000 e 3001. Na AWS, a distribuição CloudFront de cada site encaminha `/api/*` ao API Gateway da sua API; no ambiente local, o `devProxy` do Nuxt faz o mesmo. Assim o navegador chama a API na mesma origem da página: **não há CORS**, o build do site não depende da URL do API Gateway, e as duas APIs não repetem caminhos, o que permite um único documento OpenAPI.
+- **Um único documento OpenAPI 3.2.0, em `docs/swagger.yaml`**, cobrindo as duas APIs (os caminhos `/api/admin` apontam para o servidor da 3001, e as tags hierárquicas da 3.2 agrupam cada API). Ele não é servido pelas Lambdas: um gerador de documentação compila `docs/` + `README.md` + o swagger num site estático publicado no S3, com o Swagger UI atual (que suporta a 3.2). Uma checagem compara as rotas do Express com os caminhos do documento. A collection `.http` tem uma seção por API.
 
 ### Conexões com o banco
 
@@ -43,7 +42,7 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 
 - **Dois projetos Nuxt** no mesmo repositório (`web/customer` e `web/admin`), compartilhando componentes por uma pasta comum. Assim nenhuma página do admin entra no HTML estático público do cliente.
 - Nuxt SSG servido do S3 através do CloudFront, que dá HTTPS mesmo sem domínio próprio.
-- **Duas distribuições CloudFront**, uma por frontend, cada uma com seu bucket. Cada API aceita no CORS apenas o domínio `*.cloudfront.net` do seu frontend.
+- **Duas distribuições CloudFront**, uma por frontend, cada uma com seu bucket. Em cada uma, `/api/*` vai para o API Gateway da API correspondente e o resto vem do S3.
 
 ## Banco de dados
 
