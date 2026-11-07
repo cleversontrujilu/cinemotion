@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+ Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="2.0.0" use-changelog="false" max-obj-count="8"
+	 gen-disabled-objs-code="false" show-sys-schemas-rects="true" seg-mode="0" seg-threshold="500"
+	 last-position="185,0" last-zoom="1" scene-rect="0,0,1726.51,1076.8" last-scene="0"
+	 default-schema="public" default-owner="postgres"
+	 layers="Default layer"
+	 active-layers="0"
+	 layer-name-colors="#000000"
+	 layer-rect-colors="#b4b4b4"
+	 show-layer-names="false" show-layer-rects="false">
+<database name="cinemotion" is-template="false" allow-conns="true">
+</database>
+
+<schema name="public" layers="0" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true">
+</schema>
+
+<table name="public.movie" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="140" y="280"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="36"/>
+	</column>
+	<column name="title" not-null="true">
+		<type name="varchar" length="200"/>
+	</column>
+	<column name="duration" not-null="true">
+		<type name="int4" length="0"/>
+		<comment> <![CDATA[Duration in minutes]]> </comment>
+	</column>
+	<constraint name="movie_pk" type="pk-constr" table="public.movie">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="public.theater" layers="0" collapse-mode="2" max-obj-count="2" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="600" y="300"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="55"/>
+	</column>
+	<constraint name="theater_pk" type="pk-constr" table="public.theater">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="seat" layers="0" collapse-mode="2" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1040" y="280"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="seat_row" not-null="true">
+		<type name="varchar" length="3"/>
+		<comment> <![CDATA[Ex.: the seat is in row J or AA]]> </comment>
+	</column>
+	<column name="number" not-null="true">
+		<type name="int2" length="0"/>
+		<comment> <![CDATA[1 - 99]]> </comment>
+	</column>
+	<column name="is_available" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<constraint name="seat_pk" type="pk-constr" table="public.seat">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="ck_seat_number" type="ck-constr" table="public.seat">
+			<expression> <![CDATA[number BETWEEN 1 AND 99]]> </expression>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="theater_id" index="4"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="theater_fk" index="1"/>
+	</customidxs></table>
+
+<table name="public.session" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<appended-sql> <![CDATA[CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE session    
+  ADD CONSTRAINT session_time_chk CHECK (ends_at > starts_at),
+  ADD CONSTRAINT session_no_overlap EXCLUDE USING gist (
+      theater_id WITH =,
+      tstzrange(starts_at, ends_at, '[)') WITH &&
+  );]]> </appended-sql>
+	<position x="320" y="500"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="starts_at" not-null="true">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="price" not-null="true">
+		<type name="numeric" length="10" precision="2"/>
+	</column>
+	<column name="ends_at" not-null="true">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="session_pk" type="pk-constr" table="public.session">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="ix_price" type="ck-constr" table="public.session">
+			<expression> <![CDATA[price >= 0]]> </expression>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="movie_id" index="1"/>
+		<object name="theater_id" index="2"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="movie_fk" index="1"/>
+		<object name="theater_fk" index="2"/>
+	</customidxs></table>
+
+<relationship name="theater_has_many_seat" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#5cbc64"
+	 src-table="public.theater"
+	 dst-table="public.seat"
+	 src-required="true" dst-required="false"
+	upd-action="NO ACTION"
+	del-action="CASCADE">
+	<label ref-type="name-label">
+		<position x="5.27816" y="-13.753"/>
+	</label>
+</relationship>
+
+<relationship name="movie_has_many_session" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#695a79"
+	 src-table="public.movie"
+	 dst-table="public.session"
+	 src-required="true" dst-required="false"
+	upd-action="RESTRICT"
+	del-action="RESTRICT">
+	<label ref-type="name-label">
+		<position x="-14.1281" y="-43.753"/>
+	</label>
+</relationship>
+
+<relationship name="theater_has_many_session" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#43cb59"
+	 src-table="public.theater"
+	 dst-table="public.session"
+	 src-required="true" dst-required="false"
+	upd-action="RESTRICT"
+	del-action="RESTRICT">
+	<label ref-type="name-label">
+		<position x="0" y="0"/>
+	</label>
+</relationship>
+
+<usertype name="user_role" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration label="admin"/>
+	<enumeration label="customer"/>
+</usertype>
+
+<usertype name="reservation_status" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration label="pending"/>
+	<enumeration label="confirmed"/>
+	<enumeration label="cancelled"/>
+	<enumeration label="expired"/>
+</usertype>
+
+<table name="reservation_seat" layers="0" collapse-mode="2" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1300" y="820"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="released_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="session_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="reservation_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="reservation_seat_pk" type="pk-constr" table="public.reservation_seat">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="seat_id" index="2"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="seat_fk" index="1"/>
+	</customidxs></table>
+
+<table name="public.reservation" layers="0" collapse-mode="2" max-obj-count="9" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="820" y="560"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="status" not-null="true" default-value="'pending'">
+		<type name="public.reservation_status" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="CURRENT_TIMESTAMP">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="expires_at" not-null="true">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="confirmed_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="cancelled_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="reservation_pk" type="pk-constr" table="public.reservation">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="app_user_id" index="6"/>
+		<object name="session_id" index="7"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="app_user_fk" index="1"/>
+		<object name="session_fk" index="2"/>
+	</customidxs></table>
+
+<table name="public.app_user" layers="0" collapse-mode="2" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="260" y="820"/>
+	<column name="id" not-null="true" default-value="uuidv7()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="email" not-null="true">
+		<type name="varchar" length="255"/>
+	</column>
+	<column name="password_hash" not-null="true">
+		<type name="varchar" length="255"/>
+	</column>
+	<column name="role" not-null="true" default-value="'customer'">
+		<type name="public.user_role" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="CURRENT_TIMESTAMP">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="user_pk" type="pk-constr" table="public.app_user">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<relationship name="session_has_many_reservation" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#a19eae"
+	 src-table="public.session"
+	 dst-table="public.reservation"
+	 src-required="true" dst-required="false">
+	<label ref-type="name-label">
+		<position x="0" y="0"/>
+	</label>
+</relationship>
+
+<relationship name="seat_has_many_reservation_seat" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#de0289"
+	 src-table="public.seat"
+	 dst-table="public.reservation_seat"
+	 src-required="true" dst-required="false"
+	upd-action="CASCADE"
+	del-action="CASCADE">
+	<label ref-type="name-label">
+		<position x="111.239" y="-10.153"/>
+	</label>
+</relationship>
+
+<index name="ux_theater_name" table="public.theater"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<index name="ux_seat_row_number" table="public.seat"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="theater_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="seat_row"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="number"/>
+		</idxelement>
+</index>
+
+<relationship name="user_has_many_reservation" type="rel1n" layers="0"
+	 src-col-pattern="{st}_{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#e87d22"
+	 src-table="public.app_user"
+	 dst-table="public.reservation"
+	 src-required="true" dst-required="false">
+	<label ref-type="name-label">
+		<position x="0" y="0"/>
+	</label>
+</relationship>
+
+<index name="ux_app_user_email" table="public.app_user"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<expression> <![CDATA[lower(email)]]> </expression>
+		</idxelement>
+</index>
+
+<constraint name="uq_reservation_id_session_id" type="uq-constr" table="public.reservation">
+	<columns names="id,session_id" ref-type="src-columns"/>
+</constraint>
+
+<index name="ux_reservation_seat_session_id_seat_id" table="public.reservation_seat"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="session_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="seat_id"/>
+		</idxelement>
+	<predicate> <![CDATA[released_at IS NULL]]> </predicate>
+</index>
+
+<constraint name="reservation_id_session_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="CASCADE" ref-table="public.reservation" table="public.reservation_seat">
+	<columns names="reservation_id,session_id" ref-type="src-columns"/>
+	<columns names="id,session_id" ref-type="dst-columns"/>
+</constraint>
+
+<relationship name="rel_reservation_seat_reservation" type="relfk" layers="0"
+	 src-table="public.reservation_seat"
+	 dst-table="public.reservation" reference-fk="reservation_id_session_id_fk"
+	 src-required="false" dst-required="true"/>
+
+</dbmodel>
