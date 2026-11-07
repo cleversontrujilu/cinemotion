@@ -1,6 +1,8 @@
 # dependências e builds
 node_modules/
 dist/
+# link que o `nuxt generate` cria para .output/public
+web/*/dist
 coverage/
 *.zip
 

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* A detecção automática do Tailwind parte do site que está rodando; a camada comum fica fora dele. */
+@source "../..";
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+}
