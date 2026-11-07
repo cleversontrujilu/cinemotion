@@ -52,7 +52,7 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 - Os roles `cinemotion_admin` e `cinemotion_customer` são criados **sem senha**. A senha é definida fora do repositório (`ALTER ROLE ... PASSWORD`). O `db:reset` define senhas de desenvolvimento só no banco local.
 - O pgModeler (`docs/model/`) passa a ser só o diagrama de referência, e não a fonte do schema.
 - O seed fica separado das migrations (`api/seeds/seed.sql`). `npm run db:reset -w api` recria o banco local, aplica as migrations e o seed.
-- No deploy, as migrations rodam num passo explícito (`npm run migrate`) **antes** do `tofu apply`, da máquina local, com uma credencial de *owner* separada dos roles da aplicação. As Lambdas nunca migram o banco.
+- No deploy, as migrations rodam num passo explícito (`npm run db:migrate -w api`) **antes** do `tofu apply`, da máquina local, com uma credencial de *owner* separada dos roles da aplicação. As Lambdas nunca migram o banco.
 - As chaves primárias usam `uuidv7()`, nativo apenas no **PostgreSQL 18**. Se o banco da AWS for de outra versão, isso é ajustado no deploy.
 - Todo horário é gravado em `timestamptz`.
 
@@ -177,4 +177,4 @@ Erros de reserva:
 - Job de expiração de Reservas (ver ADR 0001).
 - RDS Proxy: a concorrência é limitada direto na Lambda.
 - Domínio próprio: são usadas as URLs padrão da AWS.
-- Pipeline de deploy (GitHub Actions): o deploy é manual (`npm run migrate` + `tofu apply`). O pipeline é um diferencial opcional, se houver tempo.
+- Pipeline de deploy (GitHub Actions): o deploy é manual (`npm run db:migrate -w api` + `tofu apply`). O pipeline é um diferencial opcional, se houver tempo.
