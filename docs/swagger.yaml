@@ -1,7 +1,8 @@
-openapi: 3.0.3
+openapi: 3.2.0
 
 info:
   title: Cinemotion API
+  summary: Reserva de assentos de cinema, com uma API para clientes e outra para administradores.
   version: 0.1.0
   description: |
     API de reserva de assentos de cinema. São duas APIs, cada uma com o seu papel:
@@ -47,21 +48,36 @@ servers:
         description: Domínio onde as APIs foram publicadas
 
 tags:
+  - name: API do Cliente
+    kind: nav
+    summary: Cliente
+    description: Raiz `/`. Cadastro, catálogo público, mapa de assentos e Reservas.
+  - name: API do Administrador
+    kind: nav
+    summary: Administrador
+    description: Prefixo `/admin`. Salas, Assentos, Filmes e Sessões.
   - name: Saúde
     description: Verificação de disponibilidade da API e do banco.
   - name: Cliente · Autenticação
+    parent: API do Cliente
     description: Cadastro e login de clientes.
   - name: Cliente · Catálogo
+    parent: API do Cliente
     description: Leitura pública de Filmes, Salas e Sessões. Não exige token.
   - name: Cliente · Reservas
+    parent: API do Cliente
     description: Mapa de assentos, Reserva, confirmação (pagamento simulado) e cancelamento.
   - name: Admin · Autenticação
+    parent: API do Administrador
     description: Login de administradores. Não existe cadastro público de administrador.
   - name: Admin · Salas
+    parent: API do Administrador
     description: Salas e mapa de Assentos. O mapa é gerado na criação e não muda depois; só as marcações mudam.
   - name: Admin · Filmes
+    parent: API do Administrador
     description: Catálogo de Filmes. A duração define o fim das Sessões criadas depois.
   - name: Admin · Sessões
+    parent: API do Administrador
     description: |
       O fim da Sessão é calculado: início + duração do Filme + 15 minutos de limpeza.
       Duas Sessões na mesma Sala não podem se sobrepor. Sessão com Reserva ativa
@@ -460,8 +476,8 @@ paths:
   # ─────────────────────────── API do Administrador ───────────────────────────
 
   /admin/health:
-    # Os caminhos /admin rodam em outro processo local (porta 3001). O OpenAPI 3.0 não
-    # aceita $ref em servers, então a lista é definida aqui e reaproveitada por âncora YAML.
+    # Os caminhos /admin rodam em outro processo local (porta 3001). O OpenAPI não aceita
+    # $ref em servers, então a lista é definida aqui e reaproveitada por âncora YAML.
     servers: &adminServers
       - url: http://localhost:3001
         description: Local, API do Administrador (npm run dev -w api)
@@ -972,7 +988,7 @@ components:
       schema:
         type: string
         format: date
-        example: '2026-11-20'
+        examples: ["2026-11-20"]
     Page:
       name: page
       in: query
@@ -994,7 +1010,7 @@ components:
       description: Caminho do recurso criado.
       schema:
         type: string
-        example: /reservations/0190f0e0-3333-7000-8000-000000000001
+        examples: ["/reservations/0190f0e0-3333-7000-8000-000000000001"]
 
   requestBodies:
     Login:
@@ -1011,19 +1027,19 @@ components:
     Uuid:
       type: string
       format: uuid
-      example: 0190f0e0-1111-7000-8000-000000000001
+      examples: ["0190f0e0-1111-7000-8000-000000000001"]
 
     UtcDateTime:
       type: string
       format: date-time
       description: ISO 8601 em UTC.
-      example: '2026-11-20T22:30:00.000Z'
+      examples: ["2026-11-20T22:30:00.000Z"]
 
     OffsetDateTime:
       type: string
       format: date-time
       description: ISO 8601 com fuso explícito (`Z` ou `±hh:mm`).
-      example: '2026-11-20T19:30:00-03:00'
+      examples: ["2026-11-20T19:30:00-03:00"]
 
     Price:
       type: number
@@ -1031,20 +1047,20 @@ components:
       maximum: 99999999.99
       multipleOf: 0.01
       description: Valor em reais, no máximo 2 casas decimais.
-      example: 32.5
+      examples: [32.5]
 
     SeatLabel:
       type: string
       minLength: 2
       maxLength: 5
       description: Fileira + número, ex. `A1`, `J12`, `AA3`.
-      example: J12
+      examples: ["J12"]
 
     TheaterName:
       type: string
       minLength: 1
       maxLength: 55
-      example: Sala 1
+      examples: ["Sala 1"]
 
     Health:
       type: object
@@ -1100,7 +1116,7 @@ components:
         expiresIn:
           type: integer
           description: Segundos até expirar.
-          example: 3600
+          examples: [3600]
 
     User:
       type: object
@@ -1111,7 +1127,7 @@ components:
         email:
           type: string
           format: email
-          example: maria@exemplo.com
+          examples: ["maria@exemplo.com"]
         role:
           type: string
           enum: [customer, admin]
@@ -1124,11 +1140,11 @@ components:
           $ref: '#/components/schemas/Uuid'
         title:
           type: string
-          example: O Auto da Compadecida
+          examples: ["O Auto da Compadecida"]
         duration:
           type: integer
           description: Minutos.
-          example: 104
+          examples: [104]
 
     CreateMovieInput:
       type: object
@@ -1167,10 +1183,10 @@ components:
           $ref: '#/components/schemas/Uuid'
         row:
           type: string
-          example: J
+          examples: ["J"]
         number:
           type: integer
-          example: 12
+          examples: [12]
         label:
           $ref: '#/components/schemas/SeatLabel'
         accessible:
@@ -1188,7 +1204,7 @@ components:
           $ref: '#/components/schemas/TheaterName'
         seatCount:
           type: integer
-          example: 120
+          examples: [120]
 
     Theater:
       type: object
@@ -1271,8 +1287,7 @@ components:
         startsAt:
           $ref: '#/components/schemas/UtcDateTime'
         endsAt:
-          allOf:
-            - $ref: '#/components/schemas/UtcDateTime'
+          $ref: '#/components/schemas/UtcDateTime'
           description: Início + duração do Filme + 15 minutos de limpeza.
         price:
           $ref: '#/components/schemas/Price'
@@ -1287,16 +1302,16 @@ components:
             $ref: '#/components/schemas/Session'
         page:
           type: integer
-          example: 1
+          examples: [1]
         pageSize:
           type: integer
-          example: 20
+          examples: [20]
         total:
           type: integer
-          example: 42
+          examples: [42]
         totalPages:
           type: integer
-          example: 3
+          examples: [3]
 
     CreateSessionInput:
       type: object
@@ -1350,10 +1365,10 @@ components:
                 $ref: '#/components/schemas/SeatLabel'
               row:
                 type: string
-                example: J
+                examples: ["J"]
               number:
                 type: integer
-                example: 12
+                examples: [12]
               accessible:
                 type: boolean
               state:
@@ -1365,16 +1380,16 @@ components:
           properties:
             available:
               type: integer
-              example: 110
+              examples: [110]
             reserved:
               type: integer
-              example: 4
+              examples: [4]
             sold:
               type: integer
-              example: 5
+              examples: [5]
             unavailable:
               type: integer
-              example: 1
+              examples: [1]
 
     ReserveInput:
       type: object
@@ -1415,21 +1430,18 @@ components:
         createdAt:
           $ref: '#/components/schemas/UtcDateTime'
         expiresAt:
-          allOf:
-            - $ref: '#/components/schemas/UtcDateTime'
+          $ref: '#/components/schemas/UtcDateTime'
           description: Fim do prazo de 10 minutos para confirmar.
         confirmedAt:
-          type: string
+          type: [string, 'null']
           format: date-time
-          nullable: true
           description: ISO 8601 em UTC; `null` enquanto não aconteceu.
-          example: null
+          examples: [null]
         cancelledAt:
-          type: string
+          type: [string, 'null']
           format: date-time
-          nullable: true
           description: ISO 8601 em UTC; `null` enquanto não aconteceu.
-          example: null
+          examples: [null]
         session:
           type: object
           required: [id, startsAt, movieTitle, theaterName, price]
@@ -1440,7 +1452,7 @@ components:
               $ref: '#/components/schemas/UtcDateTime'
             movieTitle:
               type: string
-              example: O Auto da Compadecida
+              examples: ["O Auto da Compadecida"]
             theaterName:
               $ref: '#/components/schemas/TheaterName'
             price:
@@ -1452,7 +1464,7 @@ components:
         total:
           type: number
           description: Preço da Sessão × quantidade de Assentos.
-          example: 65
+          examples: [65]
 
     Problem:
       type: object
@@ -1463,13 +1475,13 @@ components:
         type:
           type: string
           description: Identificador estável do erro, `/problems/<código>`.
-          example: /problems/seat-already-taken
+          examples: ["/problems/seat-already-taken"]
         title:
           type: string
-          example: Conflito
+          examples: ["Conflito"]
         status:
           type: integer
-          example: 409
+          examples: [409]
         detail:
           type: string
           description: Explicação para pessoas; não use para lógica.
@@ -1485,10 +1497,10 @@ components:
             properties:
               path:
                 type: string
-                example: seatIds.0
+                examples: ["seatIds.0"]
               message:
                 type: string
-                example: UUID inválido
+                examples: ["UUID inválido"]
 
   examples:
     ValidationProblem:
@@ -1661,7 +1673,7 @@ components:
         WWW-Authenticate:
           schema:
             type: string
-            example: Bearer
+            examples: ["Bearer"]
       content:
         application/problem+json:
           schema:
@@ -1678,7 +1690,7 @@ components:
         WWW-Authenticate:
           schema:
             type: string
-            example: Bearer
+            examples: ["Bearer"]
       content:
         application/problem+json:
           schema:
