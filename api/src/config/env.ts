@@ -26,3 +26,23 @@ export function loadDbConfig(env: Env, urlVar = 'DATABASE_URL'): DbConfig {
   }
   return result.data;
 }
+
+const authSchema = z.object({
+  secret: z.string().min(32, 'o segredo do JWT precisa de pelo menos 32 caracteres'),
+  ttlSeconds: z.coerce.number().int().positive().default(3600),
+});
+
+export type AuthConfig = z.infer<typeof authSchema>;
+
+/**
+ * Configuração do JWT. Cada API tem seu próprio segredo: na Lambda, JWT_SECRET;
+ * no servidor local, CUSTOMER_JWT_SECRET / ADMIN_JWT_SECRET.
+ */
+export function loadAuthConfig(env: Env, secretVar = 'JWT_SECRET'): AuthConfig {
+  const result = authSchema.safeParse({ secret: env[secretVar], ttlSeconds: env.JWT_TTL_SECONDS });
+  if (!result.success) {
+    const fields = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ');
+    throw new Error(`Configuração de autenticação inválida (${secretVar}): ${fields}`);
+  }
+  return result.data;
+}
