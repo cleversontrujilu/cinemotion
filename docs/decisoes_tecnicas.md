@@ -81,7 +81,8 @@ Ver [ADR 0001](./adr/0001-expiracao-preguicosa-de-reservas.md). Resumo:
 
 - Toda regra de tempo usa o `now()` do banco, dentro da transação, e nunca o relógio da Lambda. As regras são: prazo de 10 min, Sessão iniciada e limite de 2h para cancelar.
 - Nos testes unitários, o relógio é injetado.
-- A rede usa um fuso horário único (`America/Sao_Paulo`), definido em configuração. O filtro "por data" considera o dia nesse fuso. As respostas usam ISO 8601 com offset.
+- A rede usa um fuso horário único (`America/Sao_Paulo`), definido em configuração (`APP_TIMEZONE`). O filtro "por data" considera o dia nesse fuso.
+- As respostas usam ISO 8601 em UTC (`2030-01-01T22:00:00.000Z`), e o frontend formata no fuso da rede. As entradas exigem fuso explícito (`2030-01-01T19:00:00-03:00`): data/hora sem offset é recusada, para não ficar ambígua.
 
 ### Limites de tempo exatos
 
@@ -89,6 +90,16 @@ Ver [ADR 0001](./adr/0001-expiracao-preguicosa-de-reservas.md). Resumo:
 - Sessão iniciada: `now() >= starts_at`. A partir daí, a Sessão não aceita novas Reservas.
 - Cancelamento: permitido até `starts_at - 2h`, inclusive.
 - Confirmação: aceita enquanto a Reserva estiver no prazo, mesmo com a Sessão já iniciada.
+
+### Catálogo (Salas, Filmes e Sessões)
+
+- **Leitura pública na API do Cliente** (`GET /movies`, `/theaters`, `/sessions`, `/sessions/:id`), sem token, para dar para navegar antes do login. Toda escrita fica na API admin, com token de admin.
+- **Mapa de assentos na criação da Sala:** `{ name, rows, seatsPerRow, accessibleSeats?, maintenanceSeats? }`. As fileiras são A, B, …, Z, AA, … (até 30), com até 99 assentos por fileira. O mapa inteiro entra num único INSERT, na mesma transação da Sala.
+- **Marcações:** `PATCH /theaters/:id/seats` com `[{ seat: "A1", accessible?, underMaintenance? }]`. Se algum assento não existir, nada é alterado (400 `unknown-seats`).
+- **Listagem de Sessões:** filtros `movieId`, `theaterId`, `date` (YYYY-MM-DD) e paginação `page`/`pageSize` (padrão 20, máximo 100). A resposta traz `{ items, page, pageSize, total, totalPages }`, ordenada pelo início. A API admin aceita `includePast=true`.
+- **Preço** em reais, como número com no máximo 2 casas (`numeric(10,2)` no banco).
+- **Edição de Sessão contra Reserva concorrente:** editar ou excluir trava a linha da Sessão (`SELECT ... FOR UPDATE`) antes de checar se há Reserva ativa. A transação de Reserva trava a mesma linha com `FOR SHARE`, então as duas operações nunca se cruzam. Reagendar ou trocar o Filme recalcula o fim com a duração atual do Filme.
+- Ativa = Venda ou Reserva pendente ainda no prazo. A pendente vencida não bloqueia nada (ADR 0001).
 
 ### Alterações depois de criados
 
@@ -118,6 +129,8 @@ O `type` é uma referência relativa `/problems/<código>` (ex.: `/problems/seat
 Os nomes das constraints são parte desse contrato e não devem ser renomeados sem atualizar o tradutor.
 
 Erros de autenticação (401): `invalid-credentials` (login), `missing-token` (sem `Authorization: Bearer`) e `invalid-token` (assinatura, audiência ou validade inválidas).
+
+Erros do catálogo: `theater-not-found`, `movie-not-found` e `session-not-found` (404); `unknown-seats` e `session-starts-in-past` (400); `session-has-active-reservations` (409). Remover Sala ou Filme com Sessões, ou Sessão com histórico de Reservas, dá 409 `in-use` (FK `RESTRICT`).
 
 Outros erros de domínio: `reservation-expired` e `reservation-cancelled` (409, ao confirmar), `seat-under-maintenance` (409), e pedidos inválidos (400): mais de 6 assentos, assento repetido ou assento de outra Sala.
 
