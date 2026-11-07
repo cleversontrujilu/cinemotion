@@ -4,6 +4,9 @@
 # anteriores (`# @name` + `{{nome.response.body.$.campo}}`), então rode na ordem, de cima
 # para baixo.
 #
+# As seções seguem as tags de docs/swagger.yaml (API › recurso); os casos de erro (✗) ficam
+# junto do endpoint que testam.
+#
 # Pré-requisitos:
 #   1. Banco com schema e seed:  npm run db:reset -w api   (cria admin@cinemotion.dev)
 #   2. APIs no ar:               npm run dev -w api        (cliente :3000, admin :3001/admin)
@@ -36,12 +39,13 @@
 @seatA6 = {{createTheater.response.body.$.seats[5].id}}
 @seatB1 = {{createTheater.response.body.$.seats[8].id}}
 
+### ═══════════════════ API do Administrador ═══════════════════
 
-### ═══════════════════════════════ API do Administrador ═══════════════════════════════
-
+### ─── Saúde ───
 ### Saúde da API admin
 GET {{adminUrl}}/health
 
+### ─── Autenticação ───
 ### Login do administrador
 # @name adminLogin
 POST {{adminUrl}}/auth/login
@@ -56,6 +60,10 @@ Content-Type: application/json
 GET {{adminUrl}}/auth/me
 Authorization: Bearer {{adminToken}}
 
+### ✗ 401 missing-token: rota protegida sem token
+GET {{adminUrl}}/auth/me
+
+### ─── Salas ───
 ### Cria uma Sala 5×8 (A1–E8): A1 e A2 acessíveis, E8 em manutenção
 # @name createTheater
 POST {{adminUrl}}/theaters
@@ -83,6 +91,7 @@ Content-Type: application/json
   "seats": [{ "seat": "B1", "underMaintenance": true }]
 }
 
+### ─── Filmes ───
 ### Cadastra um Filme
 # @name createMovie
 POST {{adminUrl}}/movies
@@ -94,6 +103,7 @@ Content-Type: application/json
   "duration": 104
 }
 
+### ─── Sessões ───
 ### Cria uma Sessão amanhã (fim = início + 104 min + 15 min de limpeza)
 # @name createSession
 POST {{adminUrl}}/sessions
@@ -160,27 +170,13 @@ Content-Type: application/json
   "price": 10.555
 }
 
-### ✗ 401 missing-token
-GET {{adminUrl}}/theaters
+### ═══════════════════ API do Cliente ═══════════════════
 
-
-### ═════════════════════════════════ API do Cliente ═════════════════════════════════
-
+### ─── Saúde ───
 ### Saúde da API cliente
 GET {{customerUrl}}/health
 
-### Catálogo público: Filmes
-GET {{customerUrl}}/movies
-
-### Catálogo público: Sessões futuras da Sala criada (filtros: movieId, theaterId, date, page, pageSize)
-GET {{customerUrl}}/sessions?theaterId={{theaterId}}&pageSize=10
-
-### Catálogo público: detalhe da Sessão
-GET {{customerUrl}}/sessions/{{sessionId}}
-
-### Mapa de assentos (público): E8 e B1 aparecem como unavailable
-GET {{customerUrl}}/sessions/{{sessionId}}/seats
-
+### ─── Autenticação ───
 ### Cadastro de cliente (e-mail único por execução)
 # @name register
 POST {{customerUrl}}/auth/register
@@ -223,6 +219,20 @@ Content-Type: application/json
 GET {{customerUrl}}/auth/me
 Authorization: Bearer {{customerToken}}
 
+### ─── Catálogo ───
+### Catálogo público: Filmes
+GET {{customerUrl}}/movies
+
+### Catálogo público: Sessões futuras da Sala criada (filtros: movieId, theaterId, date, page, pageSize)
+GET {{customerUrl}}/sessions?theaterId={{theaterId}}&pageSize=10
+
+### Catálogo público: detalhe da Sessão
+GET {{customerUrl}}/sessions/{{sessionId}}
+
+### Mapa de assentos (público): E8 e B1 aparecem como unavailable
+GET {{customerUrl}}/sessions/{{sessionId}}/seats
+
+### ─── Reservas ───
 ### Reserva A3 e A4: fica pendente por 10 minutos
 # @name reserve
 POST {{customerUrl}}/reservations
@@ -310,12 +320,10 @@ Authorization: Bearer {{customerToken}}
 POST {{customerUrl}}/reservations/{{soonReserve.response.body.$.id}}/cancel
 Authorization: Bearer {{customerToken}}
 
+### ═══════════════════ Regras entre as APIs (dependem das Reservas) ═══════════════════
 ### ✗ 401 invalid-token: token do cliente não vale na API admin
 GET {{adminUrl}}/theaters
 Authorization: Bearer {{customerToken}}
-
-
-### ═══════════════════ API do Administrador: regras que dependem das Reservas ═══════════════════
 
 ### ✗ 409 session-has-active-reservations: a Sessão próxima tem uma Venda
 PATCH {{adminUrl}}/sessions/{{soonSessionId}}
