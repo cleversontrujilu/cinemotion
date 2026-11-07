@@ -1,0 +1,24 @@
+{
+  "name": "@cinemotion/admin-web",
+  "private": true,
+  "type": "module",
+  "description": "Site do administrador: Salas, Filmes e Sessões",
+  "scripts": {
+    "dev": "nuxt dev --port 3101",
+    "build": "nuxt generate",
+    "preview": "npx serve .output/public",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@cinemotion/web-shared": "*",
+    "@iconify-json/lucide": "^1.2.145",
+    "@nuxt/ui": "^4.12.0",
+    "nuxt": "^4.6.2",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.13"
+  }
+}
