@@ -2,7 +2,7 @@
 -- seed.sql — dados de exemplo para o banco cinemotion
 --
 -- Uso (com o schema já criado):
---   psql -h localhost -U postgres -d cinemotion -f docs/model/seed.sql
+--   npm run db:seed -w api      (ou: psql "$MIGRATION_DATABASE_URL" -f api/seeds/seed.sql)
 --
 -- O script é idempotente: apaga os dados (TRUNCATE) e insere tudo de novo.
 -- As datas são relativas a now(), então rodar de novo "atualiza" as sessões futuras.
@@ -25,8 +25,7 @@ TRUNCATE reservation_seat, reservation, session, seat, theater, movie, app_user 
 
 -- -----------------------------------------------------------------------------
 -- Usuários
--- Hash bcrypt (cost 10) de 'Senha@123', compatível com BCrypt.Net-Next.
--- Se a API usar o PasswordHasher do ASP.NET Identity, gere o hash por ele e troque aqui.
+-- Hash bcrypt (cost 10, prefixo $2a$) de 'Senha@123'.
 -- -----------------------------------------------------------------------------
 INSERT INTO app_user (email, password_hash, role) VALUES
   ('admin@cinemotion.dev',      '$2a$10$NXfEBSnhlL9A1/8LFqaMA.LQY80miJv6hPdjZC3oZlih74ejpfljK', 'admin'),
@@ -69,7 +68,7 @@ INSERT INTO theater (name) VALUES
 -- Assentos: fileiras A.. e números 1..N por sala.
 -- A1 e A2 de cada sala são acessíveis; os demais não.
 -- -----------------------------------------------------------------------------
-INSERT INTO seat (theater_id, seat_row, number, is_available)
+INSERT INTO seat (theater_id, seat_row, number, is_accessible)
 SELECT t.id,
        chr(64 + r),                 -- 1 → 'A', 2 → 'B'...
        n,
@@ -277,11 +276,3 @@ UNION ALL SELECT 'seat',             count(*) FROM seat
 UNION ALL SELECT 'session',          count(*) FROM session
 UNION ALL SELECT 'reservation',      count(*) FROM reservation
 UNION ALL SELECT 'reservation_seat', count(*) FROM reservation_seat;
-
--- -----------------------------------------------------------------------------
--- NOTA: reservation_seat.released_at
--- No schema atual a coluna tem DEFAULT CURRENT_TIMESTAMP. Se a API inserir sem
--- informar released_at, o assento nasce LIBERADO e o índice único parcial
--- (WHERE released_at IS NULL) não impede venda dupla. Este seed sempre informa
--- o valor explicitamente; o ideal é remover o default no modelo.
--- -----------------------------------------------------------------------------
