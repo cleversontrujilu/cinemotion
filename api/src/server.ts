@@ -11,14 +11,24 @@ const env = process.env;
 const customerPort = Number(env.CUSTOMER_PORT ?? 3000);
 const adminPort = Number(env.ADMIN_PORT ?? 3001);
 
-const customerPool = createPool(loadDbConfig(env, 'CUSTOMER_DATABASE_URL'));
-const adminPool = createPool(loadDbConfig(env, 'ADMIN_DATABASE_URL'));
+const customerDb = loadDbConfig(env, 'CUSTOMER_DATABASE_URL');
+const adminDb = loadDbConfig(env, 'ADMIN_DATABASE_URL');
+const customerPool = createPool(customerDb);
+const adminPool = createPool(adminDb);
 
 const servers = [
-  createCustomerApp({ pool: customerPool, auth: loadAuthConfig(env, 'CUSTOMER_JWT_SECRET') }).listen(customerPort, () =>
+  createCustomerApp({
+    pool: customerPool,
+    auth: loadAuthConfig(env, 'CUSTOMER_JWT_SECRET'),
+    timezone: customerDb.timezone,
+  }).listen(customerPort, () =>
     console.log(`API cliente em http://localhost:${customerPort}`),
   ),
-  createAdminApp({ pool: adminPool, auth: loadAuthConfig(env, 'ADMIN_JWT_SECRET') }).listen(adminPort, () =>
+  createAdminApp({
+    pool: adminPool,
+    auth: loadAuthConfig(env, 'ADMIN_JWT_SECRET'),
+    timezone: adminDb.timezone,
+  }).listen(adminPort, () =>
     console.log(`API admin   em http://localhost:${adminPort}`),
   ),
 ];
