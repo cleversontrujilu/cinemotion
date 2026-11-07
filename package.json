@@ -1,0 +1,13 @@
+{
+  "name": "cinemotion",
+  "private": true,
+  "type": "module",
+  "description": "API de reservas de assentos para uma rede de cinemas",
+  "workspaces": [
+    "api",
+    "web/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
