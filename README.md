@@ -6,8 +6,8 @@ São duas APIs geradas a partir de um único código:
 
 | API | Base local | Para quem | O que faz |
 |---|---|---|---|
-| **Cliente** | `http://localhost:3000` | Clientes | Cadastro e login, catálogo público, mapa de ocupação, Reserva, confirmação (pagamento simulado) e cancelamento |
-| **Administrador** | `http://localhost:3001/admin` | Administradores | Login, Salas com mapa de assentos, Filmes e Sessões |
+| **Cliente** | `http://localhost:3000/api` | Clientes | Cadastro e login, catálogo público, mapa de ocupação, Reserva, confirmação (pagamento simulado) e cancelamento |
+| **Administrador** | `http://localhost:3001/api/admin` | Administradores | Login, Salas com mapa de assentos, Filmes e Sessões |
 
 - Documentação OpenAPI 3.2: [`docs/swagger.yaml`](docs/swagger.yaml)
 - Collection com os principais fluxos: [`http/cinemotion.http`](http/cinemotion.http) (REST Client) e [`http/cinemotion.postman_collection.json`](http/cinemotion.postman_collection.json) (Postman)
@@ -68,11 +68,11 @@ npm run db:reset -w api
 
 # 5. Sobe as duas APIs, com reload automático
 npm run dev -w api
-#    API cliente em http://localhost:3000
-#    API admin   em http://localhost:3001/admin
+#    API cliente em http://localhost:3000/api
+#    API admin   em http://localhost:3001/api/admin
 ```
 
-Para conferir: `curl localhost:3000/health` e `curl localhost:3001/admin/health` devem responder `{"status":"ok","database":"ok"}`.
+Para conferir: `curl localhost:3000/api/health` e `curl localhost:3001/api/admin/health` devem responder `{"status":"ok","database":"ok"}`.
 
 > **Atenção:** o `db:reset` apaga e recria o banco apontado por `MIGRATION_DATABASE_URL`.
 
@@ -92,13 +92,13 @@ Também dá para cadastrar um cliente novo em `POST /auth/register`. Administrad
 Reserva os dois primeiros assentos livres da próxima Sessão (usa `curl` e `jq`):
 
 ```bash
-TOKEN=$(curl -s localhost:3000/auth/login -H 'content-type: application/json' \
+TOKEN=$(curl -s localhost:3000/api/auth/login -H 'content-type: application/json' \
   -d '{"email":"ana.souza@email.com","password":"Senha@123"}' | jq -r .accessToken)
 
-SESSION=$(curl -s 'localhost:3000/sessions?pageSize=1' | jq -r '.items[0].id')
-SEATS=$(curl -s localhost:3000/sessions/$SESSION/seats | jq -c '[.seats[] | select(.state=="available") | .id][:2]')
+SESSION=$(curl -s 'localhost:3000/api/sessions?pageSize=1' | jq -r '.items[0].id')
+SEATS=$(curl -s localhost:3000/api/sessions/$SESSION/seats | jq -c '[.seats[] | select(.state=="available") | .id][:2]')
 
-curl -s localhost:3000/reservations -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+curl -s localhost:3000/api/reservations -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d "{\"sessionId\":\"$SESSION\",\"seatIds\":$SEATS}" | jq
 ```
 
@@ -160,7 +160,7 @@ npm run db:seed -w api           # recarrega só os dados de exemplo (idempotent
 
 ## Documentação da API e collection
 
-**OpenAPI 3.2** em [`docs/swagger.yaml`](docs/swagger.yaml), um documento para as duas APIs. Os caminhos `/admin/*` apontam para o servidor da porta 3001, e as tags agrupam cada API. Ele descreve os schemas de entrada e saída, os dois esquemas de token, as regras de Reserva e todos os erros, com exemplos.
+**OpenAPI 3.2** em [`docs/swagger.yaml`](docs/swagger.yaml), um documento para as duas APIs. Os caminhos `/api/admin/*` apontam para o servidor da porta 3001, e as tags agrupam cada API. Ele descreve os schemas de entrada e saída, os dois esquemas de token, as regras de Reserva e todos os erros, com exemplos.
 
 Para visualizar localmente com o Swagger UI, sem instalar nada no projeto:
 
@@ -244,7 +244,7 @@ O detalhamento está em [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md)
 
 **Edição de Sessão contra Reserva concorrente.** Editar ou excluir trava a Sessão com `FOR UPDATE`, e a Reserva a trava com `FOR SHARE`, então as duas nunca se cruzam. Como `FOR SHARE` exige privilégio de `UPDATE` e o role do Cliente só lê o catálogo, o lock é feito por uma função `SECURITY DEFINER` que só esse role pode executar (migration `0002`).
 
-**Duas APIs, um código.** Os handlers `customer` e `admin` montam só as rotas do seu papel e viram duas Lambdas. Domínio, migrations e tradutor de erros existem em uma cópia só. A API admin responde sob `/admin`, para as duas caberem num único documento OpenAPI.
+**Duas APIs, um código.** Os handlers `customer` e `admin` montam só as rotas do seu papel e viram duas Lambdas. Domínio, migrations e tradutor de erros existem em uma cópia só. A API do cliente responde sob `/api` e a do admin sob `/api/admin`: cada frontend chama a sua API no próprio domínio (o CloudFront encaminha `/api/*` ao API Gateway), sem CORS, e as duas cabem num único documento OpenAPI.
 
 **Privilégio mínimo no banco.** Cada API conecta com o seu role. `cinemotion_customer` não escreve no catálogo, e `cinemotion_admin` não escreve em Reservas. As migrations rodam com outra credencial, a de dono do schema.
 

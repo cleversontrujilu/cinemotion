@@ -19,10 +19,12 @@ export interface AppDeps {
 }
 
 /**
- * Prefixo de cada API. As duas podem dividir um domínio (ex.: atrás do mesmo
- * CloudFront) e um único documento OpenAPI, sem caminhos repetidos.
+ * Prefixo de cada API. Cada frontend chama a sua API no próprio domínio, em `/api/*`
+ * (o CloudFront encaminha ao API Gateway; no ambiente local, o devProxy do Nuxt), sem CORS.
+ * O admin fica em `/api/admin` para as duas APIs caberem num único documento OpenAPI,
+ * sem caminhos repetidos.
  */
-export const BASE_PATH: Record<Role, string> = { customer: '', admin: '/admin' };
+export const BASE_PATH: Record<Role, string> = { customer: '/api', admin: '/api/admin' };
 
 /** O que cada API recebe para montar as rotas do seu papel. */
 export interface AppContext {
@@ -67,7 +69,7 @@ export function createApp(
     allowRegister: role === 'customer',
   });
   mountRoutes(router, { pool: deps.pool, clock, tokens, timezone: deps.timezone ?? 'America/Sao_Paulo' });
-  app.use(BASE_PATH[role] || '/', router);
+  app.use(BASE_PATH[role], router);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

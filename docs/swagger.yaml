@@ -9,11 +9,14 @@ info:
 
     | API | Prefixo | Quem usa |
     |---|---|---|
-    | **Cliente** | `/` | Clientes: cadastro, catálogo, mapa de assentos e Reservas |
-    | **Administrador** | `/admin` | Administradores: Salas, Assentos, Filmes e Sessões |
+    | **Cliente** | `/api` | Clientes: cadastro, catálogo, mapa de assentos e Reservas |
+    | **Administrador** | `/api/admin` | Administradores: Salas, Assentos, Filmes e Sessões |
+
+    Cada API é publicada no mesmo domínio do seu frontend: o CloudFront encaminha `/api/*` ao
+    API Gateway, então o site chama a API sem CORS.
 
     ## Autenticação
-    `POST /auth/login` (ou `POST /admin/auth/login`) devolve um JWT que vai no cabeçalho
+    `POST /api/auth/login` (ou `POST /api/admin/auth/login`) devolve um JWT que vai no cabeçalho
     `Authorization: Bearer <token>`. O token de uma API **não vale na outra**: o login do cliente
     não emite token de admin, nem o contrário. O token expira em 1 hora.
 
@@ -39,23 +42,22 @@ info:
 servers:
   - url: http://localhost:3000
     description: Local, API do Cliente (npm run dev -w api)
-  - &publishedServer
-    url: https://{apiDomain}
-    description: Ambiente publicado
+  - url: https://{customerDomain}
+    description: Publicada, no domínio do frontend do Cliente
     variables:
-      apiDomain:
-        default: api.cinemotion.example.com
-        description: Domínio onde as APIs foram publicadas
+      customerDomain:
+        default: cinemotion.cloudfront.net
+        description: Domínio da distribuição CloudFront do frontend do Cliente
 
 tags:
   - name: API do Cliente
     kind: nav
     summary: Cliente
-    description: Raiz `/`. Cadastro, catálogo público, mapa de assentos e Reservas.
+    description: Prefixo `/api`. Cadastro, catálogo público, mapa de assentos e Reservas.
   - name: API do Administrador
     kind: nav
     summary: Administrador
-    description: Prefixo `/admin`. Salas, Assentos, Filmes e Sessões.
+    description: Prefixo `/api/admin`. Salas, Assentos, Filmes e Sessões.
   - name: Saúde
     description: Verificação de disponibilidade da API e do banco.
   - name: Cliente · Autenticação
@@ -86,7 +88,7 @@ tags:
 paths:
   # ───────────────────────────── API do Cliente ─────────────────────────────
 
-  /health:
+  /api/health:
     get:
       tags: [Saúde]
       summary: Saúde da API do Cliente
@@ -98,7 +100,7 @@ paths:
         '503':
           $ref: '#/components/responses/HealthDegraded'
 
-  /auth/register:
+  /api/auth/register:
     post:
       tags: [Cliente · Autenticação]
       summary: Cadastra um cliente
@@ -134,9 +136,9 @@ paths:
                 title: Conflito
                 status: 409
                 detail: Já existe um usuário com esse e-mail.
-                instance: /auth/register
+                instance: /api/auth/register
 
-  /auth/login:
+  /api/auth/login:
     post:
       tags: [Cliente · Autenticação]
       summary: Login de cliente
@@ -155,7 +157,7 @@ paths:
         '401':
           $ref: '#/components/responses/InvalidCredentials'
 
-  /auth/me:
+  /api/auth/me:
     get:
       tags: [Cliente · Autenticação]
       summary: Cliente autenticado
@@ -172,7 +174,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /movies:
+  /api/movies:
     get:
       tags: [Cliente · Catálogo]
       summary: Lista os Filmes
@@ -182,7 +184,7 @@ paths:
         '200':
           $ref: '#/components/responses/MovieList'
 
-  /theaters:
+  /api/theaters:
     get:
       tags: [Cliente · Catálogo]
       summary: Lista as Salas
@@ -192,7 +194,7 @@ paths:
         '200':
           $ref: '#/components/responses/TheaterList'
 
-  /sessions:
+  /api/sessions:
     get:
       tags: [Cliente · Catálogo]
       summary: Lista as Sessões futuras
@@ -211,7 +213,7 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
-  /sessions/{id}:
+  /api/sessions/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
     get:
@@ -227,7 +229,7 @@ paths:
         '404':
           $ref: '#/components/responses/SessionNotFound'
 
-  /sessions/{id}/seats:
+  /api/sessions/{id}/seats:
     parameters:
       - $ref: '#/components/parameters/Id'
     get:
@@ -258,7 +260,7 @@ paths:
         '404':
           $ref: '#/components/responses/SessionNotFound'
 
-  /reservations:
+  /api/reservations:
     post:
       tags: [Cliente · Reservas]
       summary: Reserva Assentos
@@ -305,7 +307,7 @@ paths:
                     title: Requisição inválida
                     status: 400
                     detail: Assentos que não são da sala desta sessão.
-                    instance: /reservations
+                    instance: /api/reservations
                     invalidSeats: [0190f0e0-2222-7000-8000-000000000099]
                 validation:
                   $ref: '#/components/examples/ValidationProblem'
@@ -330,7 +332,7 @@ paths:
                     title: Conflito
                     status: 409
                     detail: Um ou mais assentos já estão reservados ou vendidos nesta sessão.
-                    instance: /reservations
+                    instance: /api/reservations
                     conflictingSeats:
                       - id: 0190f0e0-2222-7000-8000-000000000002
                         label: B3
@@ -341,7 +343,7 @@ paths:
                     title: Conflito
                     status: 409
                     detail: Assentos em manutenção não podem ser reservados.
-                    instance: /reservations
+                    instance: /api/reservations
                     seats:
                       - id: 0190f0e0-2222-7000-8000-000000000003
                         label: C1
@@ -352,7 +354,7 @@ paths:
                     title: Conflito
                     status: 409
                     detail: A sessão já começou e não aceita reservas.
-                    instance: /reservations
+                    instance: /api/reservations
     get:
       tags: [Cliente · Reservas]
       summary: Minhas Reservas
@@ -372,7 +374,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /reservations/{id}:
+  /api/reservations/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
     get:
@@ -392,7 +394,7 @@ paths:
         '404':
           $ref: '#/components/responses/ReservationNotFound'
 
-  /reservations/{id}/confirm:
+  /api/reservations/{id}/confirm:
     parameters:
       - $ref: '#/components/parameters/Id'
     post:
@@ -429,9 +431,9 @@ paths:
                     title: Conflito
                     status: 409
                     detail: A reserva foi cancelada.
-                    instance: /reservations/0190f0e0-3333-7000-8000-000000000001/confirm
+                    instance: /api/reservations/0190f0e0-3333-7000-8000-000000000001/confirm
 
-  /reservations/{id}/cancel:
+  /api/reservations/{id}/cancel:
     parameters:
       - $ref: '#/components/parameters/Id'
     post:
@@ -468,20 +470,26 @@ paths:
                     title: Conflito
                     status: 409
                     detail: Cancelamentos são permitidos até 2 horas antes do início da sessão.
-                    instance: /reservations/0190f0e0-3333-7000-8000-000000000001/cancel
+                    instance: /api/reservations/0190f0e0-3333-7000-8000-000000000001/cancel
                     deadline: '2026-11-20T20:30:00.000Z'
                 expired:
                   $ref: '#/components/examples/ReservationExpired'
 
   # ─────────────────────────── API do Administrador ───────────────────────────
 
-  /admin/health:
-    # Os caminhos /admin rodam em outro processo local (porta 3001). O OpenAPI não aceita
-    # $ref em servers, então a lista é definida aqui e reaproveitada por âncora YAML.
+  /api/admin/health:
+    # Os caminhos /api/admin rodam em outro processo local (porta 3001) e, publicados, no
+    # domínio do frontend do admin. O OpenAPI não aceita $ref em servers, então a lista é
+    # definida aqui e reaproveitada por âncora YAML.
     servers: &adminServers
       - url: http://localhost:3001
         description: Local, API do Administrador (npm run dev -w api)
-      - *publishedServer
+      - url: https://{adminDomain}
+        description: Publicada, no domínio do frontend do Administrador
+        variables:
+          adminDomain:
+            default: cinemotion-admin.cloudfront.net
+            description: Domínio da distribuição CloudFront do frontend do Administrador
     get:
       tags: [Saúde]
       summary: Saúde da API do Administrador
@@ -493,7 +501,7 @@ paths:
         '503':
           $ref: '#/components/responses/HealthDegraded'
 
-  /admin/auth/login:
+  /api/admin/auth/login:
     servers: *adminServers
     post:
       tags: [Admin · Autenticação]
@@ -511,7 +519,7 @@ paths:
         '401':
           $ref: '#/components/responses/InvalidCredentials'
 
-  /admin/auth/me:
+  /api/admin/auth/me:
     servers: *adminServers
     get:
       tags: [Admin · Autenticação]
@@ -529,7 +537,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /admin/theaters:
+  /api/admin/theaters:
     servers: *adminServers
     post:
       tags: [Admin · Salas]
@@ -581,7 +589,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /admin/theaters/{id}:
+  /api/admin/theaters/{id}:
     servers: *adminServers
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -649,7 +657,7 @@ paths:
         '409':
           $ref: '#/components/responses/InUse'
 
-  /admin/theaters/{id}/seats:
+  /api/admin/theaters/{id}/seats:
     servers: *adminServers
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -685,7 +693,7 @@ paths:
         '404':
           $ref: '#/components/responses/TheaterNotFound'
 
-  /admin/movies:
+  /api/admin/movies:
     servers: *adminServers
     post:
       tags: [Admin · Filmes]
@@ -728,7 +736,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /admin/movies/{id}:
+  /api/admin/movies/{id}:
     servers: *adminServers
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -792,7 +800,7 @@ paths:
         '409':
           $ref: '#/components/responses/InUse'
 
-  /admin/sessions:
+  /api/admin/sessions:
     servers: *adminServers
     post:
       tags: [Admin · Sessões]
@@ -858,7 +866,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /admin/sessions/{id}:
+  /api/admin/sessions/{id}:
     servers: *adminServers
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -913,7 +921,7 @@ paths:
                 title: Recurso não encontrado
                 status: 404
                 detail: Sessão não encontrada.
-                instance: /admin/sessions/0190f0e0-1111-7000-8000-000000000001
+                instance: /api/admin/sessions/0190f0e0-1111-7000-8000-000000000001
         '409':
           $ref: '#/components/responses/SessionConflict'
     delete:
@@ -952,12 +960,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de `POST /auth/login`. Não vale na API do Administrador.
+      description: Token de `POST /api/auth/login`. Não vale na API do Administrador.
     adminBearer:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de `POST /admin/auth/login`. Não vale na API do Cliente.
+      description: Token de `POST /api/admin/auth/login`. Não vale na API do Cliente.
 
   parameters:
     Id:
@@ -1010,7 +1018,7 @@ components:
       description: Caminho do recurso criado.
       schema:
         type: string
-        examples: ["/reservations/0190f0e0-3333-7000-8000-000000000001"]
+        examples: ["/api/reservations/0190f0e0-3333-7000-8000-000000000001"]
 
   requestBodies:
     Login:
@@ -1510,7 +1518,7 @@ components:
         title: Requisição inválida
         status: 400
         detail: Dados de entrada inválidos.
-        instance: /reservations
+        instance: /api/reservations
         errors:
           - path: seatIds
             message: Assentos repetidos.
@@ -1521,7 +1529,7 @@ components:
         title: Conflito
         status: 409
         detail: O prazo de 10 minutos da reserva expirou.
-        instance: /reservations/0190f0e0-3333-7000-8000-000000000001/confirm
+        instance: /api/reservations/0190f0e0-3333-7000-8000-000000000001/confirm
     SessionHasActiveReservations:
       summary: Sessão com Reserva ativa
       value:
@@ -1529,7 +1537,7 @@ components:
         title: Conflito
         status: 409
         detail: A sessão tem reservas ativas e não pode ser alterada nem excluída.
-        instance: /admin/sessions/0190f0e0-1111-7000-8000-000000000001
+        instance: /api/admin/sessions/0190f0e0-1111-7000-8000-000000000001
         activeReservations: 3
     SessionOverlap:
       summary: Sobreposição na Sala
@@ -1538,7 +1546,7 @@ components:
         title: Conflito
         status: 409
         detail: A sessão se sobrepõe a outra na mesma sala (duração do filme + 15 min de limpeza).
-        instance: /admin/sessions
+        instance: /api/admin/sessions
     InUse:
       summary: Recurso em uso
       value:
@@ -1546,7 +1554,7 @@ components:
         title: Conflito
         status: 409
         detail: O recurso está em uso e não pode ser removido.
-        instance: /admin/theaters/0190f0e0-5555-7000-8000-000000000001
+        instance: /api/admin/theaters/0190f0e0-5555-7000-8000-000000000001
 
   responses:
     HealthOk:
@@ -1645,7 +1653,7 @@ components:
                 title: Requisição inválida
                 status: 400
                 detail: A sessão precisa começar no futuro.
-                instance: /admin/sessions
+                instance: /api/admin/sessions
             validation:
               $ref: '#/components/examples/ValidationProblem'
     UnknownSeatsOrValidation:
@@ -1662,7 +1670,7 @@ components:
                 title: Requisição inválida
                 status: 400
                 detail: Assentos inexistentes no mapa da sala.
-                instance: /admin/theaters
+                instance: /api/admin/theaters
                 unknownSeats: [Z99]
             validation:
               $ref: '#/components/examples/ValidationProblem'
@@ -1683,7 +1691,7 @@ components:
             title: Não autenticado
             status: 401
             detail: 'Envie o token no cabeçalho Authorization: Bearer <token>.'
-            instance: /reservations
+            instance: /api/reservations
     InvalidCredentials:
       description: E-mail ou senha inválidos, ou usuário de outro papel.
       headers:
@@ -1700,7 +1708,7 @@ components:
             title: Não autenticado
             status: 401
             detail: E-mail ou senha inválidos.
-            instance: /auth/login
+            instance: /api/auth/login
 
     SessionNotFound:
       description: Sessão não encontrada.
@@ -1713,7 +1721,7 @@ components:
             title: Recurso não encontrado
             status: 404
             detail: Sessão não encontrada.
-            instance: /sessions/0190f0e0-1111-7000-8000-000000000001
+            instance: /api/sessions/0190f0e0-1111-7000-8000-000000000001
     ReservationNotFound:
       description: Reserva não encontrada ou de outro cliente.
       content:
@@ -1725,7 +1733,7 @@ components:
             title: Recurso não encontrado
             status: 404
             detail: Reserva não encontrada.
-            instance: /reservations/0190f0e0-3333-7000-8000-000000000001
+            instance: /api/reservations/0190f0e0-3333-7000-8000-000000000001
     TheaterNotFound:
       description: Sala não encontrada.
       content:
@@ -1737,7 +1745,7 @@ components:
             title: Recurso não encontrado
             status: 404
             detail: Sala não encontrada.
-            instance: /admin/theaters/0190f0e0-5555-7000-8000-000000000001
+            instance: /api/admin/theaters/0190f0e0-5555-7000-8000-000000000001
     MovieNotFound:
       description: Filme não encontrado.
       content:
@@ -1749,7 +1757,7 @@ components:
             title: Recurso não encontrado
             status: 404
             detail: Filme não encontrado.
-            instance: /admin/movies/0190f0e0-4444-7000-8000-000000000001
+            instance: /api/admin/movies/0190f0e0-4444-7000-8000-000000000001
     MovieOrTheaterNotFound:
       description: Filme (`movie-not-found`) ou Sala (`theater-not-found`) não encontrados.
       content:
@@ -1761,7 +1769,7 @@ components:
             title: Recurso não encontrado
             status: 404
             detail: Filme não encontrado.
-            instance: /admin/sessions
+            instance: /api/admin/sessions
 
     TheaterNameTaken:
       description: Já existe uma Sala com esse nome.
@@ -1774,7 +1782,7 @@ components:
             title: Conflito
             status: 409
             detail: Já existe uma sala com esse nome.
-            instance: /admin/theaters
+            instance: /api/admin/theaters
     InUse:
       description: O recurso tem dependentes e não pode ser removido.
       content:

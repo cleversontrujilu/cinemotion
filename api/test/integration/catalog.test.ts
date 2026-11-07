@@ -18,9 +18,9 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
   let token: string;
 
   const asAdmin = () => ({ authorization: `Bearer ${token}` });
-  const post = (path: string, body: object) => request(admin).post(`/admin${path}`).set(asAdmin()).send(body);
-  const patch = (path: string, body: object) => request(admin).patch(`/admin${path}`).set(asAdmin()).send(body);
-  const del = (path: string) => request(admin).delete(`/admin${path}`).set(asAdmin());
+  const post = (path: string, body: object) => request(admin).post(`/api/admin${path}`).set(asAdmin()).send(body);
+  const patch = (path: string, body: object) => request(admin).patch(`/api/admin${path}`).set(asAdmin()).send(body);
+  const del = (path: string) => request(admin).delete(`/api/admin${path}`).set(asAdmin());
 
   let theaterId: string;
   let movieId: string;
@@ -40,7 +40,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
     customer = createCustomerApp({ pool: customerPool, auth: authConfig });
 
     const login = await request(admin)
-      .post('/admin/auth/login')
+      .post('/api/admin/auth/login')
       .send({ email: 'admin@cinemotion.dev', password: 'Senha@123' });
     token = login.body.accessToken;
   });
@@ -52,7 +52,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
 
   describe('Salas', () => {
     it('escrita exige token de admin', async () => {
-      const res = await request(admin).post('/admin/theaters').send({ name: 'X', rows: 1, seatsPerRow: 1 });
+      const res = await request(admin).post('/api/admin/theaters').send({ name: 'X', rows: 1, seatsPerRow: 1 });
       expect(res.status).toBe(401);
     });
 
@@ -66,7 +66,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
       });
 
       expect(res.status).toBe(201);
-      expect(res.headers.location).toBe(`/admin/theaters/${res.body.id}`);
+      expect(res.headers.location).toBe(`/api/admin/theaters/${res.body.id}`);
       expect(res.body.seats).toHaveLength(120);
       expect(res.body.seats.at(-1).label).toBe('J12');
       const byLabel = Object.fromEntries(res.body.seats.map((s: { label: string }) => [s.label, s]));
@@ -111,12 +111,12 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
       });
       expect(res.status).toBe(400);
       expect(res.body.unknownSeats).toEqual(['Z99']);
-      const theater = await request(admin).get(`/admin/theaters/${theaterId}`).set(asAdmin());
+      const theater = await request(admin).get(`/api/admin/theaters/${theaterId}`).set(asAdmin());
       expect(theater.body.seats.find((s: { label: string }) => s.label === 'A5').underMaintenance).toBe(false);
     });
 
     it('sala inexistente dá 404', async () => {
-      const res = await request(admin).get('/admin/theaters/0190f0e0-0000-7000-8000-000000000000').set(asAdmin());
+      const res = await request(admin).get('/api/admin/theaters/0190f0e0-0000-7000-8000-000000000000').set(asAdmin());
       expect(res.status).toBe(404);
       expect(res.body.type).toBe('/problems/theater-not-found');
     });
@@ -183,7 +183,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
 
     it('mudar a duração do filme não altera o fim das sessões existentes', async () => {
       await patch(`/movies/${movieId}`, { duration: 90 });
-      const res = await request(admin).get(`/admin/sessions/${sessionId}`).set(asAdmin());
+      const res = await request(admin).get(`/api/admin/sessions/${sessionId}`).set(asAdmin());
       expect(res.body.endsAt).toBe('2030-01-02T00:15:00.000Z');
     });
 
@@ -241,7 +241,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
     });
 
     it('é pública e lista só sessões futuras, em ordem de início', async () => {
-      const res = await request(customer).get('/sessions');
+      const res = await request(customer).get('/api/sessions');
       expect(res.status).toBe(200);
       expect(res.body.total).toBe(4);
       const starts = res.body.items.map((s: { startsAt: string }) => s.startsAt);
@@ -249,39 +249,39 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
     });
 
     it('filtra por filme', async () => {
-      const res = await request(customer).get('/sessions').query({ movieId: otherMovieId });
+      const res = await request(customer).get('/api/sessions').query({ movieId: otherMovieId });
       expect(res.body.total).toBe(2);
     });
 
     it('filtra pelo dia no fuso de Brasília', async () => {
-      const day5 = await request(customer).get('/sessions').query({ date: '2030-01-05' });
+      const day5 = await request(customer).get('/api/sessions').query({ date: '2030-01-05' });
       expect(day5.body.items.map((s: { startsAt: string }) => s.startsAt)).toEqual(['2030-01-06T02:30:00.000Z']);
-      const day6 = await request(customer).get('/sessions').query({ date: '2030-01-06' });
+      const day6 = await request(customer).get('/api/sessions').query({ date: '2030-01-06' });
       expect(day6.body.total).toBe(1);
     });
 
     it('pagina com total e totalPages', async () => {
-      const page2 = await request(customer).get('/sessions').query({ page: 2, pageSize: 3 });
+      const page2 = await request(customer).get('/api/sessions').query({ page: 2, pageSize: 3 });
       expect(page2.body).toMatchObject({ page: 2, pageSize: 3, total: 4, totalPages: 2 });
       expect(page2.body.items).toHaveLength(1);
 
-      const beyond = await request(customer).get('/sessions').query({ page: 9, pageSize: 3 });
+      const beyond = await request(customer).get('/api/sessions').query({ page: 9, pageSize: 3 });
       expect(beyond.body).toMatchObject({ items: [], total: 4, totalPages: 2 });
     });
 
     it('valida os filtros', async () => {
-      const res = await request(customer).get('/sessions').query({ date: '05/01/2030', pageSize: 500 });
+      const res = await request(customer).get('/api/sessions').query({ date: '05/01/2030', pageSize: 500 });
       expect(res.status).toBe(400);
       expect(res.body.errors.map((e: { path: string }) => e.path).sort()).toEqual(['date', 'pageSize']);
     });
 
     it('admin pode incluir sessões passadas', async () => {
-      const res = await request(admin).get('/admin/sessions').set(asAdmin()).query({ includePast: 'true' });
+      const res = await request(admin).get('/api/admin/sessions').set(asAdmin()).query({ includePast: 'true' });
       expect(res.body.total).toBe(5);
     });
 
     it('a API do cliente não tem escrita no catálogo', async () => {
-      const res = await request(customer).post('/movies').send({ title: 'x', duration: 1 });
+      const res = await request(customer).post('/api/movies').send({ title: 'x', duration: 1 });
       expect(res.status).toBe(404);
     });
   });
