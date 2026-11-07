@@ -82,7 +82,7 @@ Ver [ADR 0001](./adr/0001-expiracao-preguicosa-de-reservas.md). Resumo:
 - Toda regra de tempo usa o `now()` do banco, dentro da transação, e nunca o relógio da Lambda. As regras são: prazo de 10 min, Sessão iniciada e limite de 2h para cancelar.
 - Nos testes unitários, o relógio é injetado.
 - A rede usa um fuso horário único (`America/Sao_Paulo`), definido em configuração (`APP_TIMEZONE`). O filtro "por data" considera o dia nesse fuso.
-- As respostas usam ISO 8601 em UTC (`2030-01-01T22:00:00.000Z`), e o frontend formata no fuso da rede. As entradas exigem fuso explícito (`2030-01-01T19:00:00-03:00`): data/hora sem offset é recusada, para não ficar ambígua.
+- As respostas usam ISO 8601 em UTC (`2030-01-01T22:00:00.000Z`), e o frontend formata no fuso da rede. As entradas exigem fuso explícito (`2030-01-01T19:00:00-03:00`): data/hora sem offset é recusada, para não ficar ambígua. Ver [ADR 0002](./adr/0002-datas-em-utc-formatadas-no-frontend.md).
 
 ### Limites de tempo exatos
 
