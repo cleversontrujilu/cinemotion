@@ -1,0 +1,3237 @@
+{
+  "info": {
+    "_postman_id": "d6e2ad93-50c2-5203-8243-9455e9e2e598",
+    "name": "Cinemotion",
+    "description": "Principais fluxos das APIs do Cinemotion (cliente e administrador). Gerada a partir de http/cinemotion.http, com as mesmas requisições.\n\nPré-requisitos: `npm run db:reset -w api` (cria admin@cinemotion.dev) e `npm run dev -w api`.\n\nRode na ordem (Run collection ou `npx newman run http/cinemotion.postman_collection.json`): as requisições guardam ids e tokens em variáveis da collection para as seguintes. Cada requisição confere o status esperado; as marcadas com ✗ verificam o erro (Problem Details). As pastas seguem as tags de docs/swagger.yaml, e cada requisição traz um exemplo de resposta real. Para o ambiente publicado, troque customerUrl e adminUrl.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "API do Administrador",
+      "item": [
+        {
+          "name": "Saúde",
+          "item": [
+            {
+              "id": "d7f892f6-40c0-5618-8917-bde16e23af6a",
+              "name": "Saúde da API admin",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/health",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{adminUrl}}/health",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"ok\",\n  \"database\": \"ok\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Autenticação",
+          "item": [
+            {
+              "id": "f5f0d1c0-47fa-5894-b5fc-4b47997b51cf",
+              "name": "Login do administrador",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('adminToken', json.accessToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/auth/login",
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGNpbmVtb3Rpb24uZGV2Iiwicm9sZSI6ImFkbWluIiwic3ViIjoiMDFhMWI3ZDctOTI0NS03NzkyLWFkMDQtMWNiY2Q3YWNlNzg5IiwiaXNzIjoiY2luZW1vdGlvbiIsImF1ZCI6ImNpbmVtb3Rpb24tYWRtaW4iLCJpYXQiOjE3OTQwODU3MjQsImV4cCI6MTc5NDA4OTMyNH0.QgV4I9U8UO2Y9BeE1ILqtEEVJ4O7Cb2Id_9pSPoL2gI\",\n  \"tokenType\": \"Bearer\",\n  \"expiresIn\": 3600\n}"
+                }
+              ]
+            },
+            {
+              "id": "11abb75f-3289-5ffe-a7ba-da586be9a9b6",
+              "name": "Quem sou eu (admin)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/auth/me",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{adminUrl}}/auth/me",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-9245-7792-ad04-1cbcd7ace789\",\n  \"email\": \"admin@cinemotion.dev\",\n  \"role\": \"admin\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "b9e6f393-037d-5904-9ead-ef1fcf0e0663",
+              "name": "✗ 401 missing-token: rota protegida sem token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));",
+                      "pm.test('type /problems/missing-token', () => pm.expect(pm.response.json().type).to.eql('/problems/missing-token'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/auth/me",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{adminUrl}}/auth/me",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "WWW-Authenticate",
+                      "value": "Bearer"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"/problems/missing-token\",\n  \"title\": \"Não autenticado\",\n  \"status\": 401,\n  \"detail\": \"Envie o token no cabeçalho Authorization: Bearer <token>.\",\n  \"instance\": \"/admin/auth/me\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Salas",
+          "item": [
+            {
+              "id": "cc56afd2-86f2-5783-b84c-c2f85b3a6a87",
+              "name": "Cria uma Sala 5×8 (A1–E8): A1 e A2 acessíveis, E8 em manutenção",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('theaterId', json.id);",
+                      "  pm.collectionVariables.set('seatA3', json.seats[2].id);",
+                      "  pm.collectionVariables.set('seatA4', json.seats[3].id);",
+                      "  pm.collectionVariables.set('seatA5', json.seats[4].id);",
+                      "  pm.collectionVariables.set('seatA6', json.seats[5].id);",
+                      "  pm.collectionVariables.set('seatB1', json.seats[8].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/theaters",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Sala HTTP {{$timestamp}}\",\n  \"rows\": 5,\n  \"seatsPerRow\": 8,\n  \"accessibleSeats\": [\"A1\", \"A2\"],\n  \"maintenanceSeats\": [\"E8\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/theaters",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Sala HTTP {{$timestamp}}\",\n  \"rows\": 5,\n  \"seatsPerRow\": 8,\n  \"accessibleSeats\": [\"A1\", \"A2\"],\n  \"maintenanceSeats\": [\"E8\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/admin/theaters/01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n  \"name\": \"Sala HTTP 1794085725\",\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7a1f-83c6-befdead0dbf9\",\n      \"row\": \"A\",\n      \"number\": 1,\n      \"label\": \"A1\",\n      \"accessible\": true,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7cf6-bbc7-d0ce2973e7d0\",\n      \"row\": \"A\",\n      \"number\": 2,\n      \"label\": \"A2\",\n      \"accessible\": true,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"row\": \"A\",\n      \"number\": 3,\n      \"label\": \"A3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"row\": \"A\",\n      \"number\": 4,\n      \"label\": \"A4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d2e-b5ec-1794f232bca3\",\n      \"row\": \"A\",\n      \"number\": 5,\n      \"label\": \"A5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"row\": \"A\",\n      \"number\": 6,\n      \"label\": \"A6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d46-9af9-99052894bca5\",\n      \"row\": \"A\",\n      \"number\": 7,\n      \"label\": \"A7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d52-9975-38c8f4bbb4bd\",\n      \"row\": \"A\",\n      \"number\": 8,\n      \"label\": \"A8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d5e-b5a0-2b6a3b9a4b3e\",\n      \"row\": \"B\",\n      \"number\": 1,\n      \"label\": \"B1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d6b-ad7e-46e2a2ea9c18\",\n      \"row\": \"B\",\n      \"number\": 2,\n      \"label\": \"B2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d77-be86-82523717eb77\",\n      \"row\": \"B\",\n      \"number\": 3,\n      \"label\": \"B3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d83-8152-6fc315219aed\",\n      \"row\": \"B\",\n      \"number\": 4,\n      \"label\": \"B4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-71e1-94ff-c24b312c7dbc\",\n      \"row\": \"B\",\n      \"number\": 5,\n      \"label\": \"B5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7207-80bf-46f5ed447449\",\n      \"row\": \"B\",\n      \"number\": 6,\n      \"label\": \"B6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7215-b0a6-e1c960b307fa\",\n      \"row\": \"B\",\n      \"number\": 7,\n      \"label\": \"B7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7222-935b-c0aa46342664\",\n      \"row\": \"B\",\n      \"number\": 8,\n      \"label\": \"B8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-722e-8419-4ae74be24c86\",\n      \"row\": \"C\",\n      \"number\": 1,\n      \"label\": \"C1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7239-a7e4-9d55ae2d4994\",\n      \"row\": \"C\",\n      \"number\": 2,\n      \"label\": \"C2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-72f6-854f-af2a9380e56a\",\n      \"row\": \"C\",\n      \"number\": 3,\n      \"label\": \"C3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7327-9952-a8e02b7795a5\",\n      \"row\": \"C\",\n      \"number\": 4,\n      \"label\": \"C4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7337-a0d4-1e7ae0ca7979\",\n      \"row\": \"C\",\n      \"number\": 5,\n      \"label\": \"C5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7343-8dea-9f20801f0375\",\n      \"row\": \"C\",\n      \"number\": 6,\n      \"label\": \"C6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7350-a5d4-af3e56e16975\",\n      \"row\": \"C\",\n      \"number\": 7,\n      \"label\": \"C7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-735b-8c86-83658cbbc695\",\n      \"row\": \"C\",\n      \"number\": 8,\n      \"label\": \"C8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7367-9fa7-ff72ca2e0ddf\",\n      \"row\": \"D\",\n      \"number\": 1,\n      \"label\": \"D1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7374-a62b-2e4dcafa53bf\",\n      \"row\": \"D\",\n      \"number\": 2,\n      \"label\": \"D2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7380-b4f5-5b0cf9a45324\",\n      \"row\": \"D\",\n      \"number\": 3,\n      \"label\": \"D3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-738b-abe4-5d7933a96671\",\n      \"row\": \"D\",\n      \"number\": 4,\n      \"label\": \"D4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7397-85f4-d0c1c5c684ba\",\n      \"row\": \"D\",\n      \"number\": 5,\n      \"label\": \"D5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73a3-b7db-cccb9c74280d\",\n      \"row\": \"D\",\n      \"number\": 6,\n      \"label\": \"D6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73af-82d4-e66882e9d9bf\",\n      \"row\": \"D\",\n      \"number\": 7,\n      \"label\": \"D7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73ba-80f3-32b6ede52459\",\n      \"row\": \"D\",\n      \"number\": 8,\n      \"label\": \"D8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73c6-b6b8-d0656001376a\",\n      \"row\": \"E\",\n      \"number\": 1,\n      \"label\": \"E1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73d2-8144-3d57a73a111b\",\n      \"row\": \"E\",\n      \"number\": 2,\n      \"label\": \"E2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73dd-b5ae-57ea79689c1c\",\n      \"row\": \"E\",\n      \"number\": 3,\n      \"label\": \"E3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73e9-8c4f-1601ee8363ef\",\n      \"row\": \"E\",\n      \"number\": 4,\n      \"label\": \"E4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73f5-b73f-991ae289d4f7\",\n      \"row\": \"E\",\n      \"number\": 5,\n      \"label\": \"E5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7401-816b-c03d71e6137b\",\n      \"row\": \"E\",\n      \"number\": 6,\n      \"label\": \"E6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-740c-adb9-622be9361d47\",\n      \"row\": \"E\",\n      \"number\": 7,\n      \"label\": \"E7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7418-9e40-7a375a92ecda\",\n      \"row\": \"E\",\n      \"number\": 8,\n      \"label\": \"E8\",\n      \"accessible\": false,\n      \"underMaintenance\": true\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "id": "6debcf15-333e-503e-8aa6-fb944498bd6f",
+              "name": "Lista as Salas",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/theaters",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{adminUrl}}/theaters",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"01a1b7d7-9247-7500-90dc-29a0e5989de4\",\n    \"name\": \"Sala 1\",\n    \"seatCount\": 120\n  },\n  {\n    \"id\": \"01a1b7d7-9247-7bba-8be1-c92537a237b1\",\n    \"name\": \"Sala 2\",\n    \"seatCount\": 80\n  },\n  {\n    \"id\": \"01a1b7d7-9247-7c70-b706-6f69d8e9d5df\",\n    \"name\": \"Sala 3 VIP\",\n    \"seatCount\": 40\n  },\n  {\n    \"id\": \"01a1b7d7-9756-7241-b33e-f104a7d0a66b\",\n    \"name\": \"Sala HTTP 1794085721\",\n    \"seatCount\": 40\n  },\n  {\n    \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n    \"name\": \"Sala HTTP 1794085725\",\n    \"seatCount\": 40\n  }\n]"
+                }
+              ]
+            },
+            {
+              "id": "3cfd757f-1c54-58c4-977b-e573d95e3afe",
+              "name": "Coloca B1 em manutenção (o mapa não muda, só as marcações)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/theaters/{{theaterId}}/seats",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"seats\": [{ \"seat\": \"B1\", \"underMaintenance\": true }]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/theaters/{{theaterId}}/seats",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"seats\": [{ \"seat\": \"B1\", \"underMaintenance\": true }]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n  \"name\": \"Sala HTTP 1794085725\",\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7a1f-83c6-befdead0dbf9\",\n      \"row\": \"A\",\n      \"number\": 1,\n      \"label\": \"A1\",\n      \"accessible\": true,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7cf6-bbc7-d0ce2973e7d0\",\n      \"row\": \"A\",\n      \"number\": 2,\n      \"label\": \"A2\",\n      \"accessible\": true,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"row\": \"A\",\n      \"number\": 3,\n      \"label\": \"A3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"row\": \"A\",\n      \"number\": 4,\n      \"label\": \"A4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d2e-b5ec-1794f232bca3\",\n      \"row\": \"A\",\n      \"number\": 5,\n      \"label\": \"A5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"row\": \"A\",\n      \"number\": 6,\n      \"label\": \"A6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d46-9af9-99052894bca5\",\n      \"row\": \"A\",\n      \"number\": 7,\n      \"label\": \"A7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d52-9975-38c8f4bbb4bd\",\n      \"row\": \"A\",\n      \"number\": 8,\n      \"label\": \"A8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d5e-b5a0-2b6a3b9a4b3e\",\n      \"row\": \"B\",\n      \"number\": 1,\n      \"label\": \"B1\",\n      \"accessible\": false,\n      \"underMaintenance\": true\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d6b-ad7e-46e2a2ea9c18\",\n      \"row\": \"B\",\n      \"number\": 2,\n      \"label\": \"B2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d77-be86-82523717eb77\",\n      \"row\": \"B\",\n      \"number\": 3,\n      \"label\": \"B3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d83-8152-6fc315219aed\",\n      \"row\": \"B\",\n      \"number\": 4,\n      \"label\": \"B4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-71e1-94ff-c24b312c7dbc\",\n      \"row\": \"B\",\n      \"number\": 5,\n      \"label\": \"B5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7207-80bf-46f5ed447449\",\n      \"row\": \"B\",\n      \"number\": 6,\n      \"label\": \"B6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7215-b0a6-e1c960b307fa\",\n      \"row\": \"B\",\n      \"number\": 7,\n      \"label\": \"B7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7222-935b-c0aa46342664\",\n      \"row\": \"B\",\n      \"number\": 8,\n      \"label\": \"B8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-722e-8419-4ae74be24c86\",\n      \"row\": \"C\",\n      \"number\": 1,\n      \"label\": \"C1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7239-a7e4-9d55ae2d4994\",\n      \"row\": \"C\",\n      \"number\": 2,\n      \"label\": \"C2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-72f6-854f-af2a9380e56a\",\n      \"row\": \"C\",\n      \"number\": 3,\n      \"label\": \"C3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7327-9952-a8e02b7795a5\",\n      \"row\": \"C\",\n      \"number\": 4,\n      \"label\": \"C4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7337-a0d4-1e7ae0ca7979\",\n      \"row\": \"C\",\n      \"number\": 5,\n      \"label\": \"C5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7343-8dea-9f20801f0375\",\n      \"row\": \"C\",\n      \"number\": 6,\n      \"label\": \"C6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7350-a5d4-af3e56e16975\",\n      \"row\": \"C\",\n      \"number\": 7,\n      \"label\": \"C7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-735b-8c86-83658cbbc695\",\n      \"row\": \"C\",\n      \"number\": 8,\n      \"label\": \"C8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7367-9fa7-ff72ca2e0ddf\",\n      \"row\": \"D\",\n      \"number\": 1,\n      \"label\": \"D1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7374-a62b-2e4dcafa53bf\",\n      \"row\": \"D\",\n      \"number\": 2,\n      \"label\": \"D2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7380-b4f5-5b0cf9a45324\",\n      \"row\": \"D\",\n      \"number\": 3,\n      \"label\": \"D3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-738b-abe4-5d7933a96671\",\n      \"row\": \"D\",\n      \"number\": 4,\n      \"label\": \"D4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7397-85f4-d0c1c5c684ba\",\n      \"row\": \"D\",\n      \"number\": 5,\n      \"label\": \"D5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73a3-b7db-cccb9c74280d\",\n      \"row\": \"D\",\n      \"number\": 6,\n      \"label\": \"D6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73af-82d4-e66882e9d9bf\",\n      \"row\": \"D\",\n      \"number\": 7,\n      \"label\": \"D7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73ba-80f3-32b6ede52459\",\n      \"row\": \"D\",\n      \"number\": 8,\n      \"label\": \"D8\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73c6-b6b8-d0656001376a\",\n      \"row\": \"E\",\n      \"number\": 1,\n      \"label\": \"E1\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73d2-8144-3d57a73a111b\",\n      \"row\": \"E\",\n      \"number\": 2,\n      \"label\": \"E2\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73dd-b5ae-57ea79689c1c\",\n      \"row\": \"E\",\n      \"number\": 3,\n      \"label\": \"E3\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73e9-8c4f-1601ee8363ef\",\n      \"row\": \"E\",\n      \"number\": 4,\n      \"label\": \"E4\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73f5-b73f-991ae289d4f7\",\n      \"row\": \"E\",\n      \"number\": 5,\n      \"label\": \"E5\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7401-816b-c03d71e6137b\",\n      \"row\": \"E\",\n      \"number\": 6,\n      \"label\": \"E6\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-740c-adb9-622be9361d47\",\n      \"row\": \"E\",\n      \"number\": 7,\n      \"label\": \"E7\",\n      \"accessible\": false,\n      \"underMaintenance\": false\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7418-9e40-7a375a92ecda\",\n      \"row\": \"E\",\n      \"number\": 8,\n      \"label\": \"E8\",\n      \"accessible\": false,\n      \"underMaintenance\": true\n    }\n  ]\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Filmes",
+          "item": [
+            {
+              "id": "0c617aec-9ae3-5545-a6d8-8517cd733c85",
+              "name": "Cadastra um Filme",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('movieId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/movies",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Filme HTTP {{$timestamp}}\",\n  \"duration\": 104\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/movies",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"title\": \"Filme HTTP {{$timestamp}}\",\n  \"duration\": 104\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/admin/movies/01a1b7d7-a225-746c-8ff4-fd4492baa970"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n  \"title\": \"Filme HTTP 1794085725\",\n  \"duration\": 104\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Sessões",
+          "item": [
+            {
+              "id": "7b5e760b-8db9-56d2-8d63-e06ac4b8d4eb",
+              "name": "Cria uma Sessão amanhã (fim = início + 104 min + 15 min de limpeza)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('at_1d', new Date(Date.now() + (86400000)).toISOString());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('sessionId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1d}}\",\n  \"price\": 32.5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/sessions",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1d}}\",\n  \"price\": 32.5\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/admin/sessions/01a1b7d7-a23c-7ab5-b569-e3c64d11207f"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n  \"movie\": {\n    \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n    \"title\": \"Filme HTTP 1794085725\",\n    \"duration\": 104\n  },\n  \"theater\": {\n    \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n    \"name\": \"Sala HTTP 1794085725\"\n  },\n  \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n  \"endsAt\": \"2026-11-08T23:07:44.723Z\",\n  \"price\": 32.5\n}"
+                }
+              ]
+            },
+            {
+              "id": "0cb68090-a9bb-587c-a314-b473dbf40cfa",
+              "name": "Cria uma Sessão daqui a 1 hora (usada no cancelamento fora do prazo)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('at_1h', new Date(Date.now() + (3600000)).toISOString());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('soonSessionId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1h}}\",\n  \"price\": 25\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/sessions",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1h}}\",\n  \"price\": 25\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/admin/sessions/01a1b7d7-a254-7c1e-b398-41bba15f9c30"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a254-7c1e-b398-41bba15f9c30\",\n  \"movie\": {\n    \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n    \"title\": \"Filme HTTP 1794085725\",\n    \"duration\": 104\n  },\n  \"theater\": {\n    \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n    \"name\": \"Sala HTTP 1794085725\"\n  },\n  \"startsAt\": \"2026-11-07T22:08:44.748Z\",\n  \"endsAt\": \"2026-11-08T00:07:44.748Z\",\n  \"price\": 25\n}"
+                }
+              ]
+            },
+            {
+              "id": "4371a5f8-33b5-56d0-b46b-340b53aee481",
+              "name": "Lista as Sessões da Sala",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/sessions?theaterId={{theaterId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{adminUrl}}/sessions?theaterId={{theaterId}}",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"items\": [\n    {\n      \"id\": \"01a1b7d7-a254-7c1e-b398-41bba15f9c30\",\n      \"movie\": {\n        \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n        \"title\": \"Filme HTTP 1794085725\",\n        \"duration\": 104\n      },\n      \"theater\": {\n        \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n        \"name\": \"Sala HTTP 1794085725\"\n      },\n      \"startsAt\": \"2026-11-07T22:08:44.748Z\",\n      \"endsAt\": \"2026-11-08T00:07:44.748Z\",\n      \"price\": 25\n    },\n    {\n      \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n      \"movie\": {\n        \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n        \"title\": \"Filme HTTP 1794085725\",\n        \"duration\": 104\n      },\n      \"theater\": {\n        \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n        \"name\": \"Sala HTTP 1794085725\"\n      },\n      \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n      \"endsAt\": \"2026-11-08T23:07:44.723Z\",\n      \"price\": 32.5\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"total\": 2,\n  \"totalPages\": 1\n}"
+                }
+              ]
+            },
+            {
+              "id": "342c536a-0929-5ea6-973f-4863fdf0e573",
+              "name": "✗ 409 session-overlap: começa 30 min depois da Sessão de amanhã, na mesma Sala",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('at_1470m', new Date(Date.now() + (88200000)).toISOString());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('type /problems/session-overlap', () => pm.expect(pm.response.json().type).to.eql('/problems/session-overlap'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1470m}}\",\n  \"price\": 32.5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/sessions",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_1470m}}\",\n  \"price\": 32.5\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"/problems/session-overlap\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"A sessão se sobrepõe a outra na mesma sala (duração do filme + 15 min de limpeza).\",\n  \"instance\": \"/admin/sessions\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "df1d9dfc-a41b-538a-90da-511fb7fcff5f",
+              "name": "✗ 400 session-starts-in-past",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('at_minus1h', new Date(Date.now() + (-3600000)).toISOString());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));",
+                      "pm.test('type /problems/session-starts-in-past', () => pm.expect(pm.response.json().type).to.eql('/problems/session-starts-in-past'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_minus1h}}\",\n  \"price\": 32.5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/sessions",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"{{at_minus1h}}\",\n  \"price\": 32.5\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"/problems/session-starts-in-past\",\n  \"title\": \"Requisição inválida\",\n  \"status\": 400,\n  \"detail\": \"A sessão precisa começar no futuro.\",\n  \"instance\": \"/admin/sessions\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "71e2bfa2-7cc5-5d01-b87e-ea569c1a290c",
+              "name": "✗ 400 validation-error: data sem fuso e preço com 3 casas",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));",
+                      "pm.test('type /problems/validation-error', () => pm.expect(pm.response.json().type).to.eql('/problems/validation-error'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"2030-01-05T19:30:00\",\n  \"price\": 10.555\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{adminUrl}}/sessions",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"theaterId\": \"{{theaterId}}\",\n  \"startsAt\": \"2030-01-05T19:30:00\",\n  \"price\": 10.555\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"errors\": [\n    {\n      \"path\": \"startsAt\",\n      \"message\": \"Formato da data e hora ISO inválido\"\n    },\n    {\n      \"path\": \"price\",\n      \"message\": \"Use no máximo 2 casas decimais.\"\n    }\n  ],\n  \"type\": \"/problems/validation-error\",\n  \"title\": \"Requisição inválida\",\n  \"status\": 400,\n  \"detail\": \"Dados de entrada inválidos.\",\n  \"instance\": \"/admin/sessions\"\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "API do Cliente",
+      "item": [
+        {
+          "name": "Saúde",
+          "item": [
+            {
+              "id": "6bd257c3-f533-587e-a134-618121aabb8d",
+              "name": "Saúde da API cliente",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/health",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/health",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"ok\",\n  \"database\": \"ok\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Autenticação",
+          "item": [
+            {
+              "id": "2f960cdc-6482-500d-a425-181a6776e73b",
+              "name": "Cadastro de cliente (e-mail único por execução)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('customerEmail', json.email);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/auth/register",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"cliente.{{$timestamp}}@exemplo.com\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/auth/register",
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"cliente.{{$timestamp}}@exemplo.com\",\n  \"password\": \"{{password}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a2f3-7aa0-8ba3-24cd52883b11\",\n  \"email\": \"cliente.1794085725@exemplo.com\",\n  \"role\": \"customer\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "7db7f9ca-71db-55c2-ac43-0897b607251c",
+              "name": "✗ 409 email-taken: mesmo e-mail",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('type /problems/email-taken', () => pm.expect(pm.response.json().type).to.eql('/problems/email-taken'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/auth/register",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/auth/register",
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"/problems/email-taken\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"Já existe um usuário com esse e-mail.\",\n  \"instance\": \"/auth/register\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "3b96541c-062a-576c-8763-8116d7d12f7c",
+              "name": "Login do cliente",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('customerToken', json.accessToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/auth/login",
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNsaWVudGUuMTc5NDA4NTcyNUBleGVtcGxvLmNvbSIsInJvbGUiOiJjdXN0b21lciIsInN1YiI6IjAxYTFiN2Q3LWEyZjMtN2FhMC04YmEzLTI0Y2Q1Mjg4M2IxMSIsImlzcyI6ImNpbmVtb3Rpb24iLCJhdWQiOiJjaW5lbW90aW9uLWN1c3RvbWVyIiwiaWF0IjoxNzk0MDg1NzI1LCJleHAiOjE3OTQwODkzMjV9.M4i24Oy716BRQhYWOgnK-boxtKu4MHg1ZisDR9ESYys\",\n  \"tokenType\": \"Bearer\",\n  \"expiresIn\": 3600\n}"
+                }
+              ]
+            },
+            {
+              "id": "a0600108-c246-5fdb-819c-0d4bff1c2eb0",
+              "name": "✗ 401 invalid-credentials: administrador não entra na API cliente",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));",
+                      "pm.test('type /problems/invalid-credentials', () => pm.expect(pm.response.json().type).to.eql('/problems/invalid-credentials'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/auth/login",
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "WWW-Authenticate",
+                      "value": "Bearer"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"/problems/invalid-credentials\",\n  \"title\": \"Não autenticado\",\n  \"status\": 401,\n  \"detail\": \"E-mail ou senha inválidos.\",\n  \"instance\": \"/auth/login\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "76aad578-0fe1-5d72-beaf-2fda3f56e64f",
+              "name": "Quem sou eu (cliente)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/auth/me",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/auth/me",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a2f3-7aa0-8ba3-24cd52883b11\",\n  \"email\": \"cliente.1794085725@exemplo.com\",\n  \"role\": \"customer\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Catálogo",
+          "item": [
+            {
+              "id": "76300067-923e-5303-9f14-6f928172303e",
+              "name": "Catálogo público: Filmes",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/movies",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/movies",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"01a1b7d7-9246-7a38-a8f6-5d922b2b81a8\",\n    \"title\": \"Ainda Estou Aqui\",\n    \"duration\": 137\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7efd-8854-aa0b98412425\",\n    \"title\": \"Bacurau\",\n    \"duration\": 131\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f1c-be18-3f771a427894\",\n    \"title\": \"Central do Brasil\",\n    \"duration\": 113\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f26-896b-0312e29200a6\",\n    \"title\": \"Cidade de Deus\",\n    \"duration\": 130\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f2e-b383-624215291ed4\",\n    \"title\": \"Divertida Mente 2\",\n    \"duration\": 96\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f35-9b36-c11bb781f3cb\",\n    \"title\": \"Duna: Parte Dois\",\n    \"duration\": 166\n  },\n  {\n    \"id\": \"01a1b7d7-976e-787c-8270-5d4387b2716d\",\n    \"title\": \"Filme HTTP 1794085721\",\n    \"duration\": 104\n  },\n  {\n    \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n    \"title\": \"Filme HTTP 1794085725\",\n    \"duration\": 104\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f3d-aa20-08b642822276\",\n    \"title\": \"Interestelar\",\n    \"duration\": 169\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f44-8ad8-cff8629353b2\",\n    \"title\": \"O Auto da Compadecida\",\n    \"duration\": 104\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f4c-bac4-1f184deef370\",\n    \"title\": \"Oppenheimer\",\n    \"duration\": 180\n  },\n  {\n    \"id\": \"01a1b7d7-9246-7f54-9522-08d07a6766cc\",\n    \"title\": \"Tropa de Elite\",\n    \"duration\": 115\n  }\n]"
+                }
+              ]
+            },
+            {
+              "id": "16aefee7-10d2-5ef4-8c8c-27ee47249be9",
+              "name": "Catálogo público: Sessões futuras da Sala criada (filtros: movieId, theaterId, date, page, pageSize)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/sessions?theaterId={{theaterId}}&pageSize=10",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/sessions?theaterId={{theaterId}}&pageSize=10",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"items\": [\n    {\n      \"id\": \"01a1b7d7-a254-7c1e-b398-41bba15f9c30\",\n      \"movie\": {\n        \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n        \"title\": \"Filme HTTP 1794085725\",\n        \"duration\": 104\n      },\n      \"theater\": {\n        \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n        \"name\": \"Sala HTTP 1794085725\"\n      },\n      \"startsAt\": \"2026-11-07T22:08:44.748Z\",\n      \"endsAt\": \"2026-11-08T00:07:44.748Z\",\n      \"price\": 25\n    },\n    {\n      \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n      \"movie\": {\n        \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n        \"title\": \"Filme HTTP 1794085725\",\n        \"duration\": 104\n      },\n      \"theater\": {\n        \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n        \"name\": \"Sala HTTP 1794085725\"\n      },\n      \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n      \"endsAt\": \"2026-11-08T23:07:44.723Z\",\n      \"price\": 32.5\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 10,\n  \"total\": 2,\n  \"totalPages\": 1\n}"
+                }
+              ]
+            },
+            {
+              "id": "82e25526-0589-5cd4-9289-f8da7ae16008",
+              "name": "Catálogo público: detalhe da Sessão",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/sessions/{{sessionId}}",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/sessions/{{sessionId}}",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n  \"movie\": {\n    \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n    \"title\": \"Filme HTTP 1794085725\",\n    \"duration\": 104\n  },\n  \"theater\": {\n    \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n    \"name\": \"Sala HTTP 1794085725\"\n  },\n  \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n  \"endsAt\": \"2026-11-08T23:07:44.723Z\",\n  \"price\": 32.5\n}"
+                }
+              ]
+            },
+            {
+              "id": "21264068-0e8f-569a-8e2c-ed672b6bd401",
+              "name": "Mapa de assentos (público): E8 e B1 aparecem como unavailable",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/sessions/{{sessionId}}/seats",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/sessions/{{sessionId}}/seats",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"sessionId\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n  \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7a1f-83c6-befdead0dbf9\",\n      \"label\": \"A1\",\n      \"row\": \"A\",\n      \"number\": 1,\n      \"accessible\": true,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7cf6-bbc7-d0ce2973e7d0\",\n      \"label\": \"A2\",\n      \"row\": \"A\",\n      \"number\": 2,\n      \"accessible\": true,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\",\n      \"row\": \"A\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\",\n      \"row\": \"A\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d2e-b5ec-1794f232bca3\",\n      \"label\": \"A5\",\n      \"row\": \"A\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"label\": \"A6\",\n      \"row\": \"A\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d46-9af9-99052894bca5\",\n      \"label\": \"A7\",\n      \"row\": \"A\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d52-9975-38c8f4bbb4bd\",\n      \"label\": \"A8\",\n      \"row\": \"A\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d5e-b5a0-2b6a3b9a4b3e\",\n      \"label\": \"B1\",\n      \"row\": \"B\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"unavailable\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d6b-ad7e-46e2a2ea9c18\",\n      \"label\": \"B2\",\n      \"row\": \"B\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d77-be86-82523717eb77\",\n      \"label\": \"B3\",\n      \"row\": \"B\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d83-8152-6fc315219aed\",\n      \"label\": \"B4\",\n      \"row\": \"B\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-71e1-94ff-c24b312c7dbc\",\n      \"label\": \"B5\",\n      \"row\": \"B\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7207-80bf-46f5ed447449\",\n      \"label\": \"B6\",\n      \"row\": \"B\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7215-b0a6-e1c960b307fa\",\n      \"label\": \"B7\",\n      \"row\": \"B\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7222-935b-c0aa46342664\",\n      \"label\": \"B8\",\n      \"row\": \"B\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-722e-8419-4ae74be24c86\",\n      \"label\": \"C1\",\n      \"row\": \"C\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7239-a7e4-9d55ae2d4994\",\n      \"label\": \"C2\",\n      \"row\": \"C\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-72f6-854f-af2a9380e56a\",\n      \"label\": \"C3\",\n      \"row\": \"C\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7327-9952-a8e02b7795a5\",\n      \"label\": \"C4\",\n      \"row\": \"C\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7337-a0d4-1e7ae0ca7979\",\n      \"label\": \"C5\",\n      \"row\": \"C\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7343-8dea-9f20801f0375\",\n      \"label\": \"C6\",\n      \"row\": \"C\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7350-a5d4-af3e56e16975\",\n      \"label\": \"C7\",\n      \"row\": \"C\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-735b-8c86-83658cbbc695\",\n      \"label\": \"C8\",\n      \"row\": \"C\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7367-9fa7-ff72ca2e0ddf\",\n      \"label\": \"D1\",\n      \"row\": \"D\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7374-a62b-2e4dcafa53bf\",\n      \"label\": \"D2\",\n      \"row\": \"D\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7380-b4f5-5b0cf9a45324\",\n      \"label\": \"D3\",\n      \"row\": \"D\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-738b-abe4-5d7933a96671\",\n      \"label\": \"D4\",\n      \"row\": \"D\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7397-85f4-d0c1c5c684ba\",\n      \"label\": \"D5\",\n      \"row\": \"D\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73a3-b7db-cccb9c74280d\",\n      \"label\": \"D6\",\n      \"row\": \"D\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73af-82d4-e66882e9d9bf\",\n      \"label\": \"D7\",\n      \"row\": \"D\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73ba-80f3-32b6ede52459\",\n      \"label\": \"D8\",\n      \"row\": \"D\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73c6-b6b8-d0656001376a\",\n      \"label\": \"E1\",\n      \"row\": \"E\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73d2-8144-3d57a73a111b\",\n      \"label\": \"E2\",\n      \"row\": \"E\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73dd-b5ae-57ea79689c1c\",\n      \"label\": \"E3\",\n      \"row\": \"E\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73e9-8c4f-1601ee8363ef\",\n      \"label\": \"E4\",\n      \"row\": \"E\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73f5-b73f-991ae289d4f7\",\n      \"label\": \"E5\",\n      \"row\": \"E\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7401-816b-c03d71e6137b\",\n      \"label\": \"E6\",\n      \"row\": \"E\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-740c-adb9-622be9361d47\",\n      \"label\": \"E7\",\n      \"row\": \"E\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7418-9e40-7a375a92ecda\",\n      \"label\": \"E8\",\n      \"row\": \"E\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"unavailable\"\n    }\n  ],\n  \"summary\": {\n    \"available\": 38,\n    \"reserved\": 0,\n    \"sold\": 0,\n    \"unavailable\": 2\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Reservas",
+          "item": [
+            {
+              "id": "6971af8a-5b6b-5e6b-bcfc-dabc34796ea9",
+              "name": "Reserva A3 e A4: fica pendente por 10 minutos",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('reservationId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA3}}\", \"{{seatA4}}\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA3}}\", \"{{seatA4}}\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/reservations/01a1b7d7-a42f-7f12-b7ee-264eead21e28"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"pending\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": null,\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "7acac64d-63a9-5f9c-b4d4-493934a05eca",
+              "name": "✗ 409 seat-already-taken: A4 já está retido (conflictingSeats traz A4); A5 não fica retido",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('type /problems/seat-already-taken', () => pm.expect(pm.response.json().type).to.eql('/problems/seat-already-taken'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA4}}\", \"{{seatA5}}\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA4}}\", \"{{seatA5}}\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"conflictingSeats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"type\": \"/problems/seat-already-taken\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"Um ou mais assentos já estão reservados ou vendidos nesta sessão.\",\n  \"instance\": \"/reservations\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "083b2c42-ea54-5562-93e5-2b7d2dcae6c5",
+              "name": "✗ 409 seat-under-maintenance: B1",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('type /problems/seat-under-maintenance', () => pm.expect(pm.response.json().type).to.eql('/problems/seat-under-maintenance'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatB1}}\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatB1}}\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d5e-b5a0-2b6a3b9a4b3e\",\n      \"label\": \"B1\"\n    }\n  ],\n  \"type\": \"/problems/seat-under-maintenance\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"Assentos em manutenção não podem ser reservados.\",\n  \"instance\": \"/reservations\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "60e2bdb1-09c7-5bb9-8a89-648917b47bc4",
+              "name": "✗ 400 validation-error: assento repetido",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));",
+                      "pm.test('type /problems/validation-error', () => pm.expect(pm.response.json().type).to.eql('/problems/validation-error'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA5}}\", \"{{seatA5}}\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"seatIds\": [\"{{seatA5}}\", \"{{seatA5}}\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"errors\": [\n    {\n      \"path\": \"seatIds\",\n      \"message\": \"Assentos repetidos.\"\n    }\n  ],\n  \"type\": \"/problems/validation-error\",\n  \"title\": \"Requisição inválida\",\n  \"status\": 400,\n  \"detail\": \"Dados de entrada inválidos.\",\n  \"instance\": \"/reservations\"\n}"
+                }
+              ]
+            },
+            {
+              "id": "0f8b46b0-f715-5753-b190-4ac9e955b571",
+              "name": "Mapa de assentos: A3 e A4 agora reserved",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/sessions/{{sessionId}}/seats",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/sessions/{{sessionId}}/seats",
+                    "auth": {
+                      "type": "noauth"
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"sessionId\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n  \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7a1f-83c6-befdead0dbf9\",\n      \"label\": \"A1\",\n      \"row\": \"A\",\n      \"number\": 1,\n      \"accessible\": true,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7cf6-bbc7-d0ce2973e7d0\",\n      \"label\": \"A2\",\n      \"row\": \"A\",\n      \"number\": 2,\n      \"accessible\": true,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\",\n      \"row\": \"A\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"reserved\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\",\n      \"row\": \"A\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"reserved\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d2e-b5ec-1794f232bca3\",\n      \"label\": \"A5\",\n      \"row\": \"A\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"label\": \"A6\",\n      \"row\": \"A\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d46-9af9-99052894bca5\",\n      \"label\": \"A7\",\n      \"row\": \"A\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d52-9975-38c8f4bbb4bd\",\n      \"label\": \"A8\",\n      \"row\": \"A\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d5e-b5a0-2b6a3b9a4b3e\",\n      \"label\": \"B1\",\n      \"row\": \"B\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"unavailable\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d6b-ad7e-46e2a2ea9c18\",\n      \"label\": \"B2\",\n      \"row\": \"B\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d77-be86-82523717eb77\",\n      \"label\": \"B3\",\n      \"row\": \"B\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d83-8152-6fc315219aed\",\n      \"label\": \"B4\",\n      \"row\": \"B\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-71e1-94ff-c24b312c7dbc\",\n      \"label\": \"B5\",\n      \"row\": \"B\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7207-80bf-46f5ed447449\",\n      \"label\": \"B6\",\n      \"row\": \"B\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7215-b0a6-e1c960b307fa\",\n      \"label\": \"B7\",\n      \"row\": \"B\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7222-935b-c0aa46342664\",\n      \"label\": \"B8\",\n      \"row\": \"B\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-722e-8419-4ae74be24c86\",\n      \"label\": \"C1\",\n      \"row\": \"C\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7239-a7e4-9d55ae2d4994\",\n      \"label\": \"C2\",\n      \"row\": \"C\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-72f6-854f-af2a9380e56a\",\n      \"label\": \"C3\",\n      \"row\": \"C\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7327-9952-a8e02b7795a5\",\n      \"label\": \"C4\",\n      \"row\": \"C\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7337-a0d4-1e7ae0ca7979\",\n      \"label\": \"C5\",\n      \"row\": \"C\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7343-8dea-9f20801f0375\",\n      \"label\": \"C6\",\n      \"row\": \"C\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7350-a5d4-af3e56e16975\",\n      \"label\": \"C7\",\n      \"row\": \"C\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-735b-8c86-83658cbbc695\",\n      \"label\": \"C8\",\n      \"row\": \"C\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7367-9fa7-ff72ca2e0ddf\",\n      \"label\": \"D1\",\n      \"row\": \"D\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7374-a62b-2e4dcafa53bf\",\n      \"label\": \"D2\",\n      \"row\": \"D\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7380-b4f5-5b0cf9a45324\",\n      \"label\": \"D3\",\n      \"row\": \"D\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-738b-abe4-5d7933a96671\",\n      \"label\": \"D4\",\n      \"row\": \"D\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7397-85f4-d0c1c5c684ba\",\n      \"label\": \"D5\",\n      \"row\": \"D\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73a3-b7db-cccb9c74280d\",\n      \"label\": \"D6\",\n      \"row\": \"D\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73af-82d4-e66882e9d9bf\",\n      \"label\": \"D7\",\n      \"row\": \"D\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73ba-80f3-32b6ede52459\",\n      \"label\": \"D8\",\n      \"row\": \"D\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73c6-b6b8-d0656001376a\",\n      \"label\": \"E1\",\n      \"row\": \"E\",\n      \"number\": 1,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73d2-8144-3d57a73a111b\",\n      \"label\": \"E2\",\n      \"row\": \"E\",\n      \"number\": 2,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73dd-b5ae-57ea79689c1c\",\n      \"label\": \"E3\",\n      \"row\": \"E\",\n      \"number\": 3,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73e9-8c4f-1601ee8363ef\",\n      \"label\": \"E4\",\n      \"row\": \"E\",\n      \"number\": 4,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-73f5-b73f-991ae289d4f7\",\n      \"label\": \"E5\",\n      \"row\": \"E\",\n      \"number\": 5,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7401-816b-c03d71e6137b\",\n      \"label\": \"E6\",\n      \"row\": \"E\",\n      \"number\": 6,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-740c-adb9-622be9361d47\",\n      \"label\": \"E7\",\n      \"row\": \"E\",\n      \"number\": 7,\n      \"accessible\": false,\n      \"state\": \"available\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e9-7418-9e40-7a375a92ecda\",\n      \"label\": \"E8\",\n      \"row\": \"E\",\n      \"number\": 8,\n      \"accessible\": false,\n      \"state\": \"unavailable\"\n    }\n  ],\n  \"summary\": {\n    \"available\": 36,\n    \"reserved\": 2,\n    \"sold\": 0,\n    \"unavailable\": 2\n  }\n}"
+                }
+              ]
+            },
+            {
+              "id": "1add7f72-3aac-5f7e-86b8-c21344d89bee",
+              "name": "Confirma a Reserva (pagamento simulado): vira Venda",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{reservationId}}/confirm",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{reservationId}}/confirm",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"confirmed\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "9b487a47-9eaf-5d3e-b719-83cbf6206698",
+              "name": "Confirmar de novo é idempotente: devolve a mesma Venda",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{reservationId}}/confirm",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{reservationId}}/confirm",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"confirmed\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "4c1bdbd0-60b0-5cb4-936f-3968579b8a22",
+              "name": "Minhas Reservas",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n    \"status\": \"confirmed\",\n    \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n    \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n    \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n    \"cancelledAt\": null,\n    \"session\": {\n      \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n      \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n      \"movieTitle\": \"Filme HTTP 1794085725\",\n      \"theaterName\": \"Sala HTTP 1794085725\",\n      \"price\": 32.5\n    },\n    \"seats\": [\n      {\n        \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n        \"label\": \"A3\"\n      },\n      {\n        \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n        \"label\": \"A4\"\n      }\n    ],\n    \"total\": 65\n  }\n]"
+                }
+              ]
+            },
+            {
+              "id": "22b6d311-9870-5f0f-ba2c-e4bc506a9004",
+              "name": "Detalhe da Reserva",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{reservationId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{reservationId}}",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"confirmed\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "80336ca0-c864-5a56-a6ce-719a7547f00a",
+              "name": "Cancela a Venda (a Sessão é amanhã, dentro do prazo de 2 horas): A3 e A4 voltam a ficar livres",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{reservationId}}/cancel",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{reservationId}}/cancel",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"cancelled\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n  \"cancelledAt\": \"2026-11-07T21:08:45.378Z\",\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "35dc37e6-38db-577a-87be-ebe6faa12443",
+              "name": "Cancelar de novo é idempotente",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{reservationId}}/cancel",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{reservationId}}/cancel",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a42f-7f12-b7ee-264eead21e28\",\n  \"status\": \"cancelled\",\n  \"createdAt\": \"2026-11-07T21:08:45.228Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.228Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.315Z\",\n  \"cancelledAt\": \"2026-11-07T21:08:45.378Z\",\n  \"session\": {\n    \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n    \"startsAt\": \"2026-11-08T21:08:44.723Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 32.5\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d12-b583-b79700c1447d\",\n      \"label\": \"A3\"\n    },\n    {\n      \"id\": \"01a1b7d7-a1e8-7d22-99be-9e6a1f510f0e\",\n      \"label\": \"A4\"\n    }\n  ],\n  \"total\": 65\n}"
+                }
+              ]
+            },
+            {
+              "id": "9de762fc-42a8-506d-ae78-0130df4b4d05",
+              "name": "Reserva A6 na Sessão que começa daqui a 1 hora",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                      "if (pm.response.code < 300) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('soonReservationId', json.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{customerUrl}}/reservations",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{soonSessionId}}\",\n  \"seatIds\": [\"{{seatA6}}\"]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{customerUrl}}/reservations",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"sessionId\": \"{{soonSessionId}}\",\n  \"seatIds\": [\"{{seatA6}}\"]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Location",
+                      "value": "/reservations/01a1b7d7-a4e8-7d1e-bc48-6384f88d34a0"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a4e8-7d1e-bc48-6384f88d34a0\",\n  \"status\": \"pending\",\n  \"createdAt\": \"2026-11-07T21:08:45.414Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.414Z\",\n  \"confirmedAt\": null,\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a254-7c1e-b398-41bba15f9c30\",\n    \"startsAt\": \"2026-11-07T22:08:44.748Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 25\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"label\": \"A6\"\n    }\n  ],\n  \"total\": 25\n}"
+                }
+              ]
+            },
+            {
+              "id": "fac81bf8-7357-5815-9359-8d77e0f720fb",
+              "name": "Confirma a Reserva da Sessão próxima",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{soonReservationId}}/confirm",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{soonReservationId}}/confirm",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"01a1b7d7-a4e8-7d1e-bc48-6384f88d34a0\",\n  \"status\": \"confirmed\",\n  \"createdAt\": \"2026-11-07T21:08:45.414Z\",\n  \"expiresAt\": \"2026-11-07T21:18:45.414Z\",\n  \"confirmedAt\": \"2026-11-07T21:08:45.433Z\",\n  \"cancelledAt\": null,\n  \"session\": {\n    \"id\": \"01a1b7d7-a254-7c1e-b398-41bba15f9c30\",\n    \"startsAt\": \"2026-11-07T22:08:44.748Z\",\n    \"movieTitle\": \"Filme HTTP 1794085725\",\n    \"theaterName\": \"Sala HTTP 1794085725\",\n    \"price\": 25\n  },\n  \"seats\": [\n    {\n      \"id\": \"01a1b7d7-a1e8-7d3a-a85d-150754bda1cf\",\n      \"label\": \"A6\"\n    }\n  ],\n  \"total\": 25\n}"
+                }
+              ]
+            },
+            {
+              "id": "e47aa8d3-d41f-506c-ab35-80e4f7083b71",
+              "name": "✗ 409 cancellation-deadline-passed: faltam menos de 2 horas (deadline traz o limite)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('type /problems/cancellation-deadline-passed', () => pm.expect(pm.response.json().type).to.eql('/problems/cancellation-deadline-passed'));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{customerUrl}}/reservations/{{soonReservationId}}/cancel",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": "{{customerUrl}}/reservations/{{soonReservationId}}/cancel",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{customerToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/problem+json; charset=utf-8"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deadline\": \"2026-11-07T20:08:44.748Z\",\n  \"type\": \"/problems/cancellation-deadline-passed\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"Cancelamentos são permitidos até 2 horas antes do início da sessão.\",\n  \"instance\": \"/reservations/01a1b7d7-a4e8-7d1e-bc48-6384f88d34a0/cancel\"\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Regras entre as APIs (dependem das Reservas)",
+      "item": [
+        {
+          "id": "0dd77c00-1e61-5094-ae41-3a652553efce",
+          "name": "✗ 401 invalid-token: token do cliente não vale na API admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('type /problems/invalid-token', () => pm.expect(pm.response.json().type).to.eql('/problems/invalid-token'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{adminUrl}}/theaters",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "401 Unauthorized",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{adminUrl}}/theaters",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "WWW-Authenticate",
+                  "value": "Bearer"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"/problems/invalid-token\",\n  \"title\": \"Não autenticado\",\n  \"status\": 401,\n  \"detail\": \"Token inválido.\",\n  \"instance\": \"/admin/theaters\"\n}"
+            }
+          ]
+        },
+        {
+          "id": "1a646349-6439-5a78-ae71-5bea33cdf27d",
+          "name": "✗ 409 session-has-active-reservations: a Sessão próxima tem uma Venda",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('type /problems/session-has-active-reservations', () => pm.expect(pm.response.json().type).to.eql('/problems/session-has-active-reservations'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{adminUrl}}/sessions/{{soonSessionId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "409 Conflict",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions/{{soonSessionId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"price\": 30\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"activeReservations\": 1,\n  \"type\": \"/problems/session-has-active-reservations\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"A sessão tem reservas ativas e não pode ser alterada nem excluída.\",\n  \"instance\": \"/admin/sessions/01a1b7d7-a254-7c1e-b398-41bba15f9c30\"\n}"
+            }
+          ]
+        },
+        {
+          "id": "ce263580-5cf5-5d44-92fe-3b32979a5218",
+          "name": "✗ 409 in-use: Sala com Sessões não pode ser excluída",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('type /problems/in-use', () => pm.expect(pm.response.json().type).to.eql('/problems/in-use'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{adminUrl}}/theaters/{{theaterId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "409 Conflict",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{adminUrl}}/theaters/{{theaterId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"/problems/in-use\",\n  \"title\": \"Conflito\",\n  \"status\": 409,\n  \"detail\": \"O recurso está em uso e não pode ser removido.\",\n  \"instance\": \"/admin/theaters/01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\"\n}"
+            }
+          ]
+        },
+        {
+          "id": "e1b40bfd-4659-5d5e-8780-b399de48a26f",
+          "name": "Remarca a Sessão de amanhã (a Reserva foi cancelada, então não há Reserva ativa)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('at_2d', new Date(Date.now() + (172800000)).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{adminUrl}}/sessions/{{sessionId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startsAt\": \"{{at_2d}}\",\n  \"price\": 35\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{adminUrl}}/sessions/{{sessionId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"startsAt\": \"{{at_2d}}\",\n  \"price\": 35\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"01a1b7d7-a23c-7ab5-b569-e3c64d11207f\",\n  \"movie\": {\n    \"id\": \"01a1b7d7-a225-746c-8ff4-fd4492baa970\",\n    \"title\": \"Filme HTTP 1794085725\",\n    \"duration\": 104\n  },\n  \"theater\": {\n    \"id\": \"01a1b7d7-a1e7-7cce-b6fe-fdfcdcf4cf01\",\n    \"name\": \"Sala HTTP 1794085725\"\n  },\n  \"startsAt\": \"2026-11-09T21:08:45.506Z\",\n  \"endsAt\": \"2026-11-09T23:07:45.506Z\",\n  \"price\": 35\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "customerUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "adminUrl",
+      "value": "http://localhost:3001/admin",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@cinemotion.dev",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Senha@123",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "movieId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seatA3",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seatA4",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seatA5",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seatA6",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seatB1",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "soonReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "soonSessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "theaterId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
