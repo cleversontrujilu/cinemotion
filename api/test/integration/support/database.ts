@@ -87,3 +87,11 @@ export async function asRole<T>(
     client.release();
   }
 }
+
+/**
+ * Pool do dono que já conecta assumindo o role da aplicação (`-c role=...`, o mesmo
+ * que SET ROLE), para testar com as permissões reais sem precisar da senha do role.
+ */
+export function rolePool(ownerUrl: string, role: 'cinemotion_customer' | 'cinemotion_admin'): pg.Pool {
+  return new pg.Pool({ connectionString: ownerUrl, max: 5, options: `-c role=${role}` });
+}
