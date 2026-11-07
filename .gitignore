@@ -1,0 +1,31 @@
+# dependências e builds
+node_modules/
+dist/
+coverage/
+*.zip
+
+# Nuxt
+.nuxt/
+.output/
+.data/
+.nitro/
+
+# ambiente
+.env
+.env.*
+!.env.example
+
+# OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# pgModeler: backups gerados ao corrigir o modelo
+docs/model/model_fixed_*.dbm
+
+# sistema/editor
+.DS_Store
+.idea/
+*.log

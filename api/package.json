@@ -1,0 +1,7 @@
+{
+  "name": "@cinemotion/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API REST do Cinemotion: um código, dois handlers Lambda (customer e admin)"
+}
