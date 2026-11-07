@@ -10,7 +10,7 @@ São duas APIs geradas a partir de um único código:
 | **Administrador** | `http://localhost:3001/admin` | Administradores | Login, Salas com mapa de assentos, Filmes e Sessões |
 
 - Documentação OpenAPI 3.2: [`docs/swagger.yaml`](docs/swagger.yaml)
-- Collection com os principais fluxos: [`http/cinemotion.http`](http/cinemotion.http)
+- Collection com os principais fluxos: [`http/cinemotion.http`](http/cinemotion.http) (REST Client) e [`http/cinemotion.postman_collection.json`](http/cinemotion.postman_collection.json) (Postman)
 - Vocabulário do domínio: [`GLOSSARY.md`](GLOSSARY.md)
 - Decisões técnicas em detalhe: [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md) e [`docs/adr/`](docs/adr/)
 
@@ -171,7 +171,20 @@ docker run --rm -p 8080:8080 -e SWAGGER_JSON=/spec/swagger.yaml -v "$PWD/docs:/s
 npx @redocly/cli@2 lint docs/swagger.yaml   # valida o documento
 ```
 
-**Collection** em [`http/cinemotion.http`](http/cinemotion.http), no formato do [VS Code REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client), com 43 requisições. Ela cria a própria Sala, Filme e Sessões, então roda várias vezes sem limpar o banco. Rode de cima para baixo, porque as requisições usam as respostas anteriores:
+**Collection** com 42 requisições, em dois formatos com o mesmo conteúdo:
+
+| Arquivo | Programa |
+|---|---|
+| [`http/cinemotion.http`](http/cinemotion.http) | [VS Code REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) |
+| [`http/cinemotion.postman_collection.json`](http/cinemotion.postman_collection.json) | Postman (*Import*) ou Newman, na linha de comando |
+
+A versão do Postman confere o status esperado de cada requisição e, nos erros, o `type` do Problem Details. Assim ela também serve de teste de ponta a ponta com a API rodando:
+
+```bash
+npx newman run http/cinemotion.postman_collection.json
+```
+
+A collection cria a própria Sala, Filme e Sessões, então roda várias vezes sem limpar o banco. Rode de cima para baixo, porque as requisições usam as respostas anteriores:
 
 1. **Admin:** login, criar Sala (com assentos acessíveis e em manutenção), marcar assento em manutenção, criar Filme e duas Sessões. Erros: sobreposição, início no passado, validação e falta de token.
 2. **Cliente:** catálogo público, mapa de assentos, cadastro, login, reservar, confirmar e cancelar, com as repetições idempotentes. Erros: assento já ocupado, assento em manutenção, cancelamento a menos de 2 horas e token de uma API usado na outra.
