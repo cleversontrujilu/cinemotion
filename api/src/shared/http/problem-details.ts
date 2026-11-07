@@ -93,6 +93,7 @@ export function toProblemDetails(err: unknown, instance: string): ProblemDetails
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   const problem = toProblemDetails(err, req.originalUrl);
   if (problem.status >= 500) console.error('[http] erro não tratado', err);
+  if (problem.status === 401) res.setHeader('WWW-Authenticate', 'Bearer');
   res.status(problem.status).type(PROBLEM_CONTENT_TYPE).json(problem);
 };
 
