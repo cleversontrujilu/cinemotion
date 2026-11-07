@@ -18,6 +18,12 @@ export interface AppDeps {
   timezone?: string;
 }
 
+/**
+ * Prefixo de cada API. As duas podem dividir um domínio (ex.: atrás do mesmo
+ * CloudFront) e um único documento OpenAPI, sem caminhos repetidos.
+ */
+export const BASE_PATH: Record<Role, string> = { customer: '', admin: '/admin' };
+
 /** O que cada API recebe para montar as rotas do seu papel. */
 export interface AppContext {
   pool: Pool;
@@ -27,7 +33,7 @@ export interface AppContext {
 }
 
 /**
- * Base comum das duas APIs: JSON, health check, autenticação do papel, 404 e
+ * Base comum das duas APIs: JSON, prefixo do papel, health check, autenticação do papel, 404 e
  * tradução de erros para Problem Details. CORS e throttling ficam no API Gateway.
  */
 export function createApp(
@@ -42,7 +48,8 @@ export function createApp(
   app.disable('x-powered-by');
   app.use(express.json({ limit: '100kb' }));
 
-  app.get('/health', async (_req, res) => {
+  const router = express.Router();
+  router.get('/health', async (_req, res) => {
     try {
       await deps.pool.query('SELECT 1');
       res.json({ status: 'ok', database: 'ok' });
@@ -52,7 +59,6 @@ export function createApp(
     }
   });
 
-  const router = express.Router();
   mountAuthRoutes(router, {
     role,
     users: pgUserRepository(deps.pool),
@@ -61,7 +67,7 @@ export function createApp(
     allowRegister: role === 'customer',
   });
   mountRoutes(router, { pool: deps.pool, clock, tokens, timezone: deps.timezone ?? 'America/Sao_Paulo' });
-  app.use(router);
+  app.use(BASE_PATH[role] || '/', router);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

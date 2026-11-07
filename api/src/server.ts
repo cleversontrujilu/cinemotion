@@ -29,7 +29,7 @@ const servers = [
     auth: loadAuthConfig(env, 'ADMIN_JWT_SECRET'),
     timezone: adminDb.timezone,
   }).listen(adminPort, () =>
-    console.log(`API admin   em http://localhost:${adminPort}`),
+    console.log(`API admin   em http://localhost:${adminPort}/admin`),
   ),
 ];
 

@@ -1,0 +1,1806 @@
+openapi: 3.2.0
+
+info:
+  title: Cinemotion API
+  summary: Reserva de assentos de cinema, com uma API para clientes e outra para administradores.
+  version: 0.1.0
+  description: |
+    API de reserva de assentos de cinema. São duas APIs, cada uma com o seu papel:
+
+    | API | Prefixo | Quem usa |
+    |---|---|---|
+    | **Cliente** | `/` | Clientes: cadastro, catálogo, mapa de assentos e Reservas |
+    | **Administrador** | `/admin` | Administradores: Salas, Assentos, Filmes e Sessões |
+
+    ## Autenticação
+    `POST /auth/login` (ou `POST /admin/auth/login`) devolve um JWT que vai no cabeçalho
+    `Authorization: Bearer <token>`. O token de uma API **não vale na outra**: o login do cliente
+    não emite token de admin, nem o contrário. O token expira em 1 hora.
+
+    ## Datas
+    As respostas trazem data/hora em **ISO 8601 UTC** (`2026-11-20T22:30:00.000Z`). Datas enviadas
+    precisam de fuso explícito (`2026-11-20T19:30:00-03:00`). Quem formata para exibição é o
+    frontend, sempre no fuso da rede (`America/Sao_Paulo`). O filtro `date=` usa o dia nesse fuso.
+
+    ## Erros
+    Todo erro segue o **Problem Details** (RFC 9457), com `Content-Type: application/problem+json`.
+    O campo `type` identifica o erro (`/problems/<código>`) e é estável; `detail` é texto para pessoas.
+    Alguns erros trazem campos extras, como `errors`, `conflictingSeats` e `deadline`.
+
+    ## Regras de Reserva
+    - De 1 a 6 Assentos por Reserva, todos da Sala da Sessão.
+    - A Reserva nasce **pendente** e segura os Assentos por **10 minutos**. Se não for confirmada,
+      expira e os Assentos voltam a ficar livres.
+    - Confirmar simula o pagamento e transforma a Reserva em Venda.
+    - O cancelamento é permitido até **2 horas** antes do início da Sessão.
+    - Confirmar e cancelar são idempotentes: repetir a chamada devolve a mesma Reserva.
+    - Dois clientes nunca compram o mesmo Assento: o segundo recebe `409 seat-already-taken`.
+
+servers:
+  - url: http://localhost:3000
+    description: Local, API do Cliente (npm run dev -w api)
+  - &publishedServer
+    url: https://{apiDomain}
+    description: Ambiente publicado
+    variables:
+      apiDomain:
+        default: api.cinemotion.example.com
+        description: Domínio onde as APIs foram publicadas
+
+tags:
+  - name: API do Cliente
+    kind: nav
+    summary: Cliente
+    description: Raiz `/`. Cadastro, catálogo público, mapa de assentos e Reservas.
+  - name: API do Administrador
+    kind: nav
+    summary: Administrador
+    description: Prefixo `/admin`. Salas, Assentos, Filmes e Sessões.
+  - name: Saúde
+    description: Verificação de disponibilidade da API e do banco.
+  - name: Cliente · Autenticação
+    parent: API do Cliente
+    description: Cadastro e login de clientes.
+  - name: Cliente · Catálogo
+    parent: API do Cliente
+    description: Leitura pública de Filmes, Salas e Sessões. Não exige token.
+  - name: Cliente · Reservas
+    parent: API do Cliente
+    description: Mapa de assentos, Reserva, confirmação (pagamento simulado) e cancelamento.
+  - name: Admin · Autenticação
+    parent: API do Administrador
+    description: Login de administradores. Não existe cadastro público de administrador.
+  - name: Admin · Salas
+    parent: API do Administrador
+    description: Salas e mapa de Assentos. O mapa é gerado na criação e não muda depois; só as marcações mudam.
+  - name: Admin · Filmes
+    parent: API do Administrador
+    description: Catálogo de Filmes. A duração define o fim das Sessões criadas depois.
+  - name: Admin · Sessões
+    parent: API do Administrador
+    description: |
+      O fim da Sessão é calculado: início + duração do Filme + 15 minutos de limpeza.
+      Duas Sessões na mesma Sala não podem se sobrepor. Sessão com Reserva ativa
+      (pendente no prazo ou Venda) não pode ser editada nem excluída.
+
+paths:
+  # ───────────────────────────── API do Cliente ─────────────────────────────
+
+  /health:
+    get:
+      tags: [Saúde]
+      summary: Saúde da API do Cliente
+      operationId: customerHealth
+      security: []
+      responses:
+        '200':
+          $ref: '#/components/responses/HealthOk'
+        '503':
+          $ref: '#/components/responses/HealthDegraded'
+
+  /auth/register:
+    post:
+      tags: [Cliente · Autenticação]
+      summary: Cadastra um cliente
+      description: Sempre cria um usuário com papel `customer`. O e-mail não diferencia maiúsculas.
+      operationId: registerCustomer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+            example:
+              email: maria@exemplo.com
+              password: Senha@123
+      responses:
+        '201':
+          description: Cliente cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: E-mail já cadastrado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: /problems/email-taken
+                title: Conflito
+                status: 409
+                detail: Já existe um usuário com esse e-mail.
+                instance: /auth/register
+
+  /auth/login:
+    post:
+      tags: [Cliente · Autenticação]
+      summary: Login de cliente
+      description: |
+        Devolve o token da API do Cliente. E-mail inexistente, senha errada ou usuário
+        administrador recebem o mesmo erro, para não revelar quais e-mails existem.
+      operationId: customerLogin
+      security: []
+      requestBody:
+        $ref: '#/components/requestBodies/Login'
+      responses:
+        '200':
+          $ref: '#/components/responses/Token'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+
+  /auth/me:
+    get:
+      tags: [Cliente · Autenticação]
+      summary: Cliente autenticado
+      operationId: customerMe
+      security:
+        - customerBearer: []
+      responses:
+        '200':
+          description: Dados do token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /movies:
+    get:
+      tags: [Cliente · Catálogo]
+      summary: Lista os Filmes
+      operationId: customerListMovies
+      security: []
+      responses:
+        '200':
+          $ref: '#/components/responses/MovieList'
+
+  /theaters:
+    get:
+      tags: [Cliente · Catálogo]
+      summary: Lista as Salas
+      operationId: customerListTheaters
+      security: []
+      responses:
+        '200':
+          $ref: '#/components/responses/TheaterList'
+
+  /sessions:
+    get:
+      tags: [Cliente · Catálogo]
+      summary: Lista as Sessões futuras
+      description: Sessões que ainda não começaram, em ordem de início, paginadas.
+      operationId: customerListSessions
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/MovieIdFilter'
+        - $ref: '#/components/parameters/TheaterIdFilter'
+        - $ref: '#/components/parameters/DateFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          $ref: '#/components/responses/SessionPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /sessions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cliente · Catálogo]
+      summary: Detalha uma Sessão
+      operationId: customerGetSession
+      security: []
+      responses:
+        '200':
+          $ref: '#/components/responses/SessionOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+
+  /sessions/{id}/seats:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cliente · Reservas]
+      summary: Mapa de assentos da Sessão
+      description: |
+        Estado de cada Assento na Sessão, calculado na hora da consulta:
+
+        | Estado | Significado |
+        |---|---|
+        | `available` | Livre para reservar |
+        | `reserved` | Numa Reserva pendente, dentro dos 10 minutos |
+        | `sold` | Vendido (Reserva confirmada) |
+        | `unavailable` | Em manutenção |
+
+        Uma Reserva pendente vencida não segura mais os Assentos. Público, não exige token.
+      operationId: getSessionSeats
+      security: []
+      responses:
+        '200':
+          description: Mapa de ocupação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OccupancyMap'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+
+  /reservations:
+    post:
+      tags: [Cliente · Reservas]
+      summary: Reserva Assentos
+      description: |
+        Cria uma Reserva pendente que segura os Assentos por 10 minutos. É tudo ou nada:
+        se um Assento estiver ocupado, nenhum é reservado.
+      operationId: createReservation
+      security:
+        - customerBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveInput'
+            example:
+              sessionId: 0190f0e0-1111-7000-8000-000000000001
+              seatIds:
+                - 0190f0e0-2222-7000-8000-000000000001
+                - 0190f0e0-2222-7000-8000-000000000002
+      responses:
+        '201':
+          description: Reserva criada.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: |
+            Entrada inválida (`validation-error`) ou Assentos que não são da Sala da Sessão
+            (`seats-not-in-session`, com `invalidSeats`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                seatsNotInSession:
+                  summary: Assento de outra Sala
+                  value:
+                    type: /problems/seats-not-in-session
+                    title: Requisição inválida
+                    status: 400
+                    detail: Assentos que não são da sala desta sessão.
+                    instance: /reservations
+                    invalidSeats: [0190f0e0-2222-7000-8000-000000000099]
+                validation:
+                  $ref: '#/components/examples/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+        '409':
+          description: |
+            - `seat-already-taken`: Assento já reservado ou vendido; `conflictingSeats` lista todos.
+            - `seat-under-maintenance`: Assento em manutenção; `seats` lista quais.
+            - `session-already-started`: a Sessão já começou.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                seatAlreadyTaken:
+                  summary: Assento ocupado
+                  value:
+                    type: /problems/seat-already-taken
+                    title: Conflito
+                    status: 409
+                    detail: Um ou mais assentos já estão reservados ou vendidos nesta sessão.
+                    instance: /reservations
+                    conflictingSeats:
+                      - id: 0190f0e0-2222-7000-8000-000000000002
+                        label: B3
+                seatUnderMaintenance:
+                  summary: Assento em manutenção
+                  value:
+                    type: /problems/seat-under-maintenance
+                    title: Conflito
+                    status: 409
+                    detail: Assentos em manutenção não podem ser reservados.
+                    instance: /reservations
+                    seats:
+                      - id: 0190f0e0-2222-7000-8000-000000000003
+                        label: C1
+                sessionAlreadyStarted:
+                  summary: Sessão já começou
+                  value:
+                    type: /problems/session-already-started
+                    title: Conflito
+                    status: 409
+                    detail: A sessão já começou e não aceita reservas.
+                    instance: /reservations
+    get:
+      tags: [Cliente · Reservas]
+      summary: Minhas Reservas
+      description: Reservas do cliente autenticado, da mais recente para a mais antiga.
+      operationId: listMyReservations
+      security:
+        - customerBearer: []
+      responses:
+        '200':
+          description: Reservas do cliente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /reservations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cliente · Reservas]
+      summary: Detalha uma Reserva
+      description: Só o dono vê a Reserva; para os outros ela não existe (404).
+      operationId: getReservation
+      security:
+        - customerBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ReservationOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ReservationNotFound'
+
+  /reservations/{id}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Cliente · Reservas]
+      summary: Confirma a Reserva (pagamento simulado)
+      description: Transforma a Reserva pendente em Venda. Confirmar uma Venda devolve a própria Venda.
+      operationId: confirmReservation
+      security:
+        - customerBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ReservationOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ReservationNotFound'
+        '409':
+          description: |
+            - `reservation-expired`: passaram os 10 minutos.
+            - `reservation-cancelled`: a Reserva foi cancelada.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                expired:
+                  $ref: '#/components/examples/ReservationExpired'
+                cancelled:
+                  summary: Reserva cancelada
+                  value:
+                    type: /problems/reservation-cancelled
+                    title: Conflito
+                    status: 409
+                    detail: A reserva foi cancelada.
+                    instance: /reservations/0190f0e0-3333-7000-8000-000000000001/confirm
+
+  /reservations/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Cliente · Reservas]
+      summary: Cancela a Reserva
+      description: |
+        Cancela uma Reserva pendente ou uma Venda e libera os Assentos. O limite é de
+        2 horas antes do início da Sessão, inclusive. Cancelar de novo devolve a Reserva cancelada.
+      operationId: cancelReservation
+      security:
+        - customerBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ReservationOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ReservationNotFound'
+        '409':
+          description: |
+            - `cancellation-deadline-passed`: faltam menos de 2 horas; `deadline` traz o limite.
+            - `reservation-expired`: a Reserva pendente já expirou.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                deadlinePassed:
+                  summary: Fora do prazo
+                  value:
+                    type: /problems/cancellation-deadline-passed
+                    title: Conflito
+                    status: 409
+                    detail: Cancelamentos são permitidos até 2 horas antes do início da sessão.
+                    instance: /reservations/0190f0e0-3333-7000-8000-000000000001/cancel
+                    deadline: '2026-11-20T20:30:00.000Z'
+                expired:
+                  $ref: '#/components/examples/ReservationExpired'
+
+  # ─────────────────────────── API do Administrador ───────────────────────────
+
+  /admin/health:
+    # Os caminhos /admin rodam em outro processo local (porta 3001). O OpenAPI não aceita
+    # $ref em servers, então a lista é definida aqui e reaproveitada por âncora YAML.
+    servers: &adminServers
+      - url: http://localhost:3001
+        description: Local, API do Administrador (npm run dev -w api)
+      - *publishedServer
+    get:
+      tags: [Saúde]
+      summary: Saúde da API do Administrador
+      operationId: adminHealth
+      security: []
+      responses:
+        '200':
+          $ref: '#/components/responses/HealthOk'
+        '503':
+          $ref: '#/components/responses/HealthDegraded'
+
+  /admin/auth/login:
+    servers: *adminServers
+    post:
+      tags: [Admin · Autenticação]
+      summary: Login de administrador
+      description: Devolve o token da API do Administrador. Cliente recebe o mesmo erro de credencial inválida.
+      operationId: adminLogin
+      security: []
+      requestBody:
+        $ref: '#/components/requestBodies/Login'
+      responses:
+        '200':
+          $ref: '#/components/responses/Token'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+
+  /admin/auth/me:
+    servers: *adminServers
+    get:
+      tags: [Admin · Autenticação]
+      summary: Administrador autenticado
+      operationId: adminMe
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          description: Dados do token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/theaters:
+    servers: *adminServers
+    post:
+      tags: [Admin · Salas]
+      summary: Cria uma Sala com o mapa de Assentos
+      description: |
+        Gera `rows × seatsPerRow` Assentos. As fileiras são letras (A, B, …, Z, AA, …) e os
+        números começam em 1. Os rótulos (`A1`, `J12`) servem para marcar Assentos acessíveis
+        ou em manutenção já na criação.
+      operationId: createTheater
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTheaterInput'
+            example:
+              name: Sala 1
+              rows: 10
+              seatsPerRow: 12
+              accessibleSeats: [A1, A2]
+              maintenanceSeats: [J12]
+      responses:
+        '201':
+          description: Sala criada.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Theater'
+        '400':
+          $ref: '#/components/responses/UnknownSeatsOrValidation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/TheaterNameTaken'
+    get:
+      tags: [Admin · Salas]
+      summary: Lista as Salas
+      operationId: adminListTheaters
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/TheaterList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/theaters/{id}:
+    servers: *adminServers
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Admin · Salas]
+      summary: Detalha uma Sala com todos os Assentos
+      operationId: getTheater
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/TheaterOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TheaterNotFound'
+    patch:
+      tags: [Admin · Salas]
+      summary: Renomeia a Sala
+      operationId: renameTheater
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties:
+                name:
+                  $ref: '#/components/schemas/TheaterName'
+            example:
+              name: Sala 1 IMAX
+      responses:
+        '200':
+          $ref: '#/components/responses/TheaterOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TheaterNotFound'
+        '409':
+          $ref: '#/components/responses/TheaterNameTaken'
+    delete:
+      tags: [Admin · Salas]
+      summary: Exclui a Sala
+      description: Só é possível excluir uma Sala sem Sessões (`409 in-use` caso contrário).
+      operationId: deleteTheater
+      security:
+        - adminBearer: []
+      responses:
+        '204':
+          description: Sala excluída.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TheaterNotFound'
+        '409':
+          $ref: '#/components/responses/InUse'
+
+  /admin/theaters/{id}/seats:
+    servers: *adminServers
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    patch:
+      tags: [Admin · Salas]
+      summary: Marca Assentos como acessíveis ou em manutenção
+      description: |
+        Altera só as marcações; o mapa não muda. Assento em manutenção não aceita novas
+        Reservas, mas as que já existem continuam valendo.
+      operationId: updateTheaterSeats
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSeatsInput'
+            example:
+              seats:
+                - seat: J12
+                  underMaintenance: false
+                - seat: B5
+                  accessible: true
+                  underMaintenance: true
+      responses:
+        '200':
+          $ref: '#/components/responses/TheaterOk'
+        '400':
+          $ref: '#/components/responses/UnknownSeatsOrValidation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TheaterNotFound'
+
+  /admin/movies:
+    servers: *adminServers
+    post:
+      tags: [Admin · Filmes]
+      summary: Cadastra um Filme
+      operationId: createMovie
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMovieInput'
+            example:
+              title: O Auto da Compadecida
+              duration: 104
+      responses:
+        '201':
+          description: Filme cadastrado.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags: [Admin · Filmes]
+      summary: Lista os Filmes
+      operationId: adminListMovies
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/MovieList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/movies/{id}:
+    servers: *adminServers
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Admin · Filmes]
+      summary: Detalha um Filme
+      operationId: getMovie
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/MovieOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+    patch:
+      tags: [Admin · Filmes]
+      summary: Altera um Filme
+      description: |
+        Mudar a duração não altera Sessões já criadas: o fim delas foi fixado na criação.
+        Informe ao menos um campo.
+      operationId: updateMovie
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMovieInput'
+            example:
+              duration: 110
+      responses:
+        '200':
+          $ref: '#/components/responses/MovieOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+    delete:
+      tags: [Admin · Filmes]
+      summary: Exclui um Filme
+      description: Só é possível excluir um Filme sem Sessões (`409 in-use` caso contrário).
+      operationId: deleteMovie
+      security:
+        - adminBearer: []
+      responses:
+        '204':
+          description: Filme excluído.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+        '409':
+          $ref: '#/components/responses/InUse'
+
+  /admin/sessions:
+    servers: *adminServers
+    post:
+      tags: [Admin · Sessões]
+      summary: Cria uma Sessão
+      description: O início precisa estar no futuro. O fim é calculado e não é enviado.
+      operationId: createSession
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionInput'
+            example:
+              movieId: 0190f0e0-4444-7000-8000-000000000001
+              theaterId: 0190f0e0-5555-7000-8000-000000000001
+              startsAt: '2026-11-20T19:30:00-03:00'
+              price: 32.5
+      responses:
+        '201':
+          description: Sessão criada.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/SessionValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/MovieOrTheaterNotFound'
+        '409':
+          $ref: '#/components/responses/SessionOverlap'
+    get:
+      tags: [Admin · Sessões]
+      summary: Lista as Sessões
+      description: Por padrão, só as futuras. Use `includePast=true` para ver o histórico.
+      operationId: adminListSessions
+      security:
+        - adminBearer: []
+      parameters:
+        - $ref: '#/components/parameters/MovieIdFilter'
+        - $ref: '#/components/parameters/TheaterIdFilter'
+        - $ref: '#/components/parameters/DateFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: includePast
+          in: query
+          description: Inclui Sessões que já começaram.
+          schema:
+            type: string
+            enum: ['true', 'false']
+            default: 'false'
+      responses:
+        '200':
+          $ref: '#/components/responses/SessionPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/sessions/{id}:
+    servers: *adminServers
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Admin · Sessões]
+      summary: Detalha uma Sessão
+      operationId: adminGetSession
+      security:
+        - adminBearer: []
+      responses:
+        '200':
+          $ref: '#/components/responses/SessionOk'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+    patch:
+      tags: [Admin · Sessões]
+      summary: Altera uma Sessão
+      description: |
+        Trocar o Filme ou o horário recalcula o fim com a duração atual do Filme.
+        Recusado se a Sessão tiver Reserva ativa. Informe ao menos um campo.
+      operationId: updateSession
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionInput'
+            example:
+              startsAt: '2026-11-20T21:00:00-03:00'
+              price: 35
+      responses:
+        '200':
+          $ref: '#/components/responses/SessionOk'
+        '400':
+          $ref: '#/components/responses/SessionValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Sessão, Filme ou Sala não encontrados.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: /problems/session-not-found
+                title: Recurso não encontrado
+                status: 404
+                detail: Sessão não encontrada.
+                instance: /admin/sessions/0190f0e0-1111-7000-8000-000000000001
+        '409':
+          $ref: '#/components/responses/SessionConflict'
+    delete:
+      tags: [Admin · Sessões]
+      summary: Exclui uma Sessão
+      description: |
+        Recusado se houver Reserva ativa (`session-has-active-reservations`) ou se a Sessão
+        tiver histórico de Reservas (`in-use`).
+      operationId: deleteSession
+      security:
+        - adminBearer: []
+      responses:
+        '204':
+          description: Sessão excluída.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+        '409':
+          description: Sessão com Reserva ativa ou com histórico de Reservas.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                activeReservations:
+                  $ref: '#/components/examples/SessionHasActiveReservations'
+                inUse:
+                  $ref: '#/components/examples/InUse'
+
+components:
+  securitySchemes:
+    customerBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de `POST /auth/login`. Não vale na API do Administrador.
+    adminBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de `POST /admin/auth/login`. Não vale na API do Cliente.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MovieIdFilter:
+      name: movieId
+      in: query
+      description: Só Sessões deste Filme.
+      schema:
+        type: string
+        format: uuid
+    TheaterIdFilter:
+      name: theaterId
+      in: query
+      description: Só Sessões desta Sala.
+      schema:
+        type: string
+        format: uuid
+    DateFilter:
+      name: date
+      in: query
+      description: Só Sessões que começam neste dia, no fuso da rede (America/Sao_Paulo).
+      schema:
+        type: string
+        format: date
+        examples: ["2026-11-20"]
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  headers:
+    Location:
+      description: Caminho do recurso criado.
+      schema:
+        type: string
+        examples: ["/reservations/0190f0e0-3333-7000-8000-000000000001"]
+
+  requestBodies:
+    Login:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoginInput'
+          example:
+            email: maria@exemplo.com
+            password: Senha@123
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      examples: ["0190f0e0-1111-7000-8000-000000000001"]
+
+    UtcDateTime:
+      type: string
+      format: date-time
+      description: ISO 8601 em UTC.
+      examples: ["2026-11-20T22:30:00.000Z"]
+
+    OffsetDateTime:
+      type: string
+      format: date-time
+      description: ISO 8601 com fuso explícito (`Z` ou `±hh:mm`).
+      examples: ["2026-11-20T19:30:00-03:00"]
+
+    Price:
+      type: number
+      minimum: 0
+      maximum: 99999999.99
+      multipleOf: 0.01
+      description: Valor em reais, no máximo 2 casas decimais.
+      examples: [32.5]
+
+    SeatLabel:
+      type: string
+      minLength: 2
+      maxLength: 5
+      description: Fileira + número, ex. `A1`, `J12`, `AA3`.
+      examples: ["J12"]
+
+    TheaterName:
+      type: string
+      minLength: 1
+      maxLength: 55
+      examples: ["Sala 1"]
+
+    Health:
+      type: object
+      required: [status, database]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        database:
+          type: string
+          enum: [ok, unavailable]
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          format: password
+
+    RegisterInput:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          format: password
+          description: Mínimo de 8 caracteres e máximo de 72 bytes em UTF-8.
+
+    Token:
+      type: object
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: JWT para o cabeçalho `Authorization`.
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          description: Segundos até expirar.
+          examples: [3600]
+
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        email:
+          type: string
+          format: email
+          examples: ["maria@exemplo.com"]
+        role:
+          type: string
+          enum: [customer, admin]
+
+    Movie:
+      type: object
+      required: [id, title, duration]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        title:
+          type: string
+          examples: ["O Auto da Compadecida"]
+        duration:
+          type: integer
+          description: Minutos.
+          examples: [104]
+
+    CreateMovieInput:
+      type: object
+      required: [title, duration]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        duration:
+          type: integer
+          minimum: 1
+          maximum: 600
+          description: Minutos.
+
+    UpdateMovieInput:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        duration:
+          type: integer
+          minimum: 1
+          maximum: 600
+
+    Seat:
+      type: object
+      required: [id, row, number, label, accessible, underMaintenance]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        row:
+          type: string
+          examples: ["J"]
+        number:
+          type: integer
+          examples: [12]
+        label:
+          $ref: '#/components/schemas/SeatLabel'
+        accessible:
+          type: boolean
+        underMaintenance:
+          type: boolean
+
+    TheaterSummary:
+      type: object
+      required: [id, name, seatCount]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          $ref: '#/components/schemas/TheaterName'
+        seatCount:
+          type: integer
+          examples: [120]
+
+    Theater:
+      type: object
+      required: [id, name, seats]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          $ref: '#/components/schemas/TheaterName'
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Seat'
+
+    CreateTheaterInput:
+      type: object
+      required: [name, rows, seatsPerRow]
+      additionalProperties: false
+      properties:
+        name:
+          $ref: '#/components/schemas/TheaterName'
+        rows:
+          type: integer
+          minimum: 1
+          maximum: 30
+        seatsPerRow:
+          type: integer
+          minimum: 1
+          maximum: 99
+        accessibleSeats:
+          type: array
+          maxItems: 3000
+          items:
+            $ref: '#/components/schemas/SeatLabel'
+        maintenanceSeats:
+          type: array
+          maxItems: 3000
+          items:
+            $ref: '#/components/schemas/SeatLabel'
+
+    UpdateSeatsInput:
+      type: object
+      required: [seats]
+      additionalProperties: false
+      properties:
+        seats:
+          type: array
+          minItems: 1
+          maxItems: 3000
+          items:
+            type: object
+            required: [seat]
+            minProperties: 2
+            description: Informe `accessible` e/ou `underMaintenance`.
+            additionalProperties: false
+            properties:
+              seat:
+                $ref: '#/components/schemas/SeatLabel'
+              accessible:
+                type: boolean
+              underMaintenance:
+                type: boolean
+
+    Session:
+      type: object
+      required: [id, movie, theater, startsAt, endsAt, price]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        movie:
+          $ref: '#/components/schemas/Movie'
+        theater:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              $ref: '#/components/schemas/TheaterName'
+        startsAt:
+          $ref: '#/components/schemas/UtcDateTime'
+        endsAt:
+          $ref: '#/components/schemas/UtcDateTime'
+          description: Início + duração do Filme + 15 minutos de limpeza.
+        price:
+          $ref: '#/components/schemas/Price'
+
+    SessionPage:
+      type: object
+      required: [items, page, pageSize, total, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        page:
+          type: integer
+          examples: [1]
+        pageSize:
+          type: integer
+          examples: [20]
+        total:
+          type: integer
+          examples: [42]
+        totalPages:
+          type: integer
+          examples: [3]
+
+    CreateSessionInput:
+      type: object
+      required: [movieId, theaterId, startsAt, price]
+      additionalProperties: false
+      properties:
+        movieId:
+          $ref: '#/components/schemas/Uuid'
+        theaterId:
+          $ref: '#/components/schemas/Uuid'
+        startsAt:
+          $ref: '#/components/schemas/OffsetDateTime'
+        price:
+          $ref: '#/components/schemas/Price'
+
+    UpdateSessionInput:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        movieId:
+          $ref: '#/components/schemas/Uuid'
+        theaterId:
+          $ref: '#/components/schemas/Uuid'
+        startsAt:
+          $ref: '#/components/schemas/OffsetDateTime'
+        price:
+          $ref: '#/components/schemas/Price'
+
+    SeatState:
+      type: string
+      enum: [available, reserved, sold, unavailable]
+
+    OccupancyMap:
+      type: object
+      required: [sessionId, startsAt, seats, summary]
+      properties:
+        sessionId:
+          $ref: '#/components/schemas/Uuid'
+        startsAt:
+          $ref: '#/components/schemas/UtcDateTime'
+        seats:
+          type: array
+          items:
+            type: object
+            required: [id, label, row, number, accessible, state]
+            properties:
+              id:
+                $ref: '#/components/schemas/Uuid'
+              label:
+                $ref: '#/components/schemas/SeatLabel'
+              row:
+                type: string
+                examples: ["J"]
+              number:
+                type: integer
+                examples: [12]
+              accessible:
+                type: boolean
+              state:
+                $ref: '#/components/schemas/SeatState'
+        summary:
+          type: object
+          description: Quantidade de Assentos em cada estado.
+          required: [available, reserved, sold, unavailable]
+          properties:
+            available:
+              type: integer
+              examples: [110]
+            reserved:
+              type: integer
+              examples: [4]
+            sold:
+              type: integer
+              examples: [5]
+            unavailable:
+              type: integer
+              examples: [1]
+
+    ReserveInput:
+      type: object
+      required: [sessionId, seatIds]
+      additionalProperties: false
+      properties:
+        sessionId:
+          $ref: '#/components/schemas/Uuid'
+        seatIds:
+          type: array
+          minItems: 1
+          maxItems: 6
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+
+    SeatRef:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          $ref: '#/components/schemas/SeatLabel'
+
+    Reservation:
+      type: object
+      required: [id, status, createdAt, expiresAt, confirmedAt, cancelledAt, session, seats, total]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, expired]
+          description: |
+            Estado efetivo: uma Reserva pendente cujo prazo passou já aparece como `expired`.
+            `confirmed` é uma Venda.
+        createdAt:
+          $ref: '#/components/schemas/UtcDateTime'
+        expiresAt:
+          $ref: '#/components/schemas/UtcDateTime'
+          description: Fim do prazo de 10 minutos para confirmar.
+        confirmedAt:
+          type: [string, 'null']
+          format: date-time
+          description: ISO 8601 em UTC; `null` enquanto não aconteceu.
+          examples: [null]
+        cancelledAt:
+          type: [string, 'null']
+          format: date-time
+          description: ISO 8601 em UTC; `null` enquanto não aconteceu.
+          examples: [null]
+        session:
+          type: object
+          required: [id, startsAt, movieTitle, theaterName, price]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            startsAt:
+              $ref: '#/components/schemas/UtcDateTime'
+            movieTitle:
+              type: string
+              examples: ["O Auto da Compadecida"]
+            theaterName:
+              $ref: '#/components/schemas/TheaterName'
+            price:
+              $ref: '#/components/schemas/Price'
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatRef'
+        total:
+          type: number
+          description: Preço da Sessão × quantidade de Assentos.
+          examples: [65]
+
+    Problem:
+      type: object
+      description: Problem Details (RFC 9457). Pode trazer campos extras conforme o erro.
+      required: [type, title, status]
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          description: Identificador estável do erro, `/problems/<código>`.
+          examples: ["/problems/seat-already-taken"]
+        title:
+          type: string
+          examples: ["Conflito"]
+        status:
+          type: integer
+          examples: [409]
+        detail:
+          type: string
+          description: Explicação para pessoas; não use para lógica.
+        instance:
+          type: string
+          description: Caminho da requisição que falhou.
+        errors:
+          type: array
+          description: Só em `validation-error`.
+          items:
+            type: object
+            required: [path, message]
+            properties:
+              path:
+                type: string
+                examples: ["seatIds.0"]
+              message:
+                type: string
+                examples: ["UUID inválido"]
+
+  examples:
+    ValidationProblem:
+      summary: Campo inválido
+      value:
+        type: /problems/validation-error
+        title: Requisição inválida
+        status: 400
+        detail: Dados de entrada inválidos.
+        instance: /reservations
+        errors:
+          - path: seatIds
+            message: Assentos repetidos.
+    ReservationExpired:
+      summary: Prazo de 10 minutos vencido
+      value:
+        type: /problems/reservation-expired
+        title: Conflito
+        status: 409
+        detail: O prazo de 10 minutos da reserva expirou.
+        instance: /reservations/0190f0e0-3333-7000-8000-000000000001/confirm
+    SessionHasActiveReservations:
+      summary: Sessão com Reserva ativa
+      value:
+        type: /problems/session-has-active-reservations
+        title: Conflito
+        status: 409
+        detail: A sessão tem reservas ativas e não pode ser alterada nem excluída.
+        instance: /admin/sessions/0190f0e0-1111-7000-8000-000000000001
+        activeReservations: 3
+    SessionOverlap:
+      summary: Sobreposição na Sala
+      value:
+        type: /problems/session-overlap
+        title: Conflito
+        status: 409
+        detail: A sessão se sobrepõe a outra na mesma sala (duração do filme + 15 min de limpeza).
+        instance: /admin/sessions
+    InUse:
+      summary: Recurso em uso
+      value:
+        type: /problems/in-use
+        title: Conflito
+        status: 409
+        detail: O recurso está em uso e não pode ser removido.
+        instance: /admin/theaters/0190f0e0-5555-7000-8000-000000000001
+
+  responses:
+    HealthOk:
+      description: API e banco disponíveis.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Health'
+          example:
+            status: ok
+            database: ok
+    HealthDegraded:
+      description: Banco indisponível.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Health'
+          example:
+            status: degraded
+            database: unavailable
+
+    Token:
+      description: Login aceito.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Token'
+
+    MovieList:
+      description: Filmes.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Movie'
+    MovieOk:
+      description: Filme.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Movie'
+    TheaterList:
+      description: Salas, com a quantidade de Assentos.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/TheaterSummary'
+    TheaterOk:
+      description: Sala com todos os Assentos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Theater'
+    SessionOk:
+      description: Sessão.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Session'
+    SessionPage:
+      description: Página de Sessões.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SessionPage'
+    ReservationOk:
+      description: Reserva.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Reservation'
+
+    ValidationError:
+      description: Entrada inválida (`validation-error`), com a lista de campos em `errors`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            validation:
+              $ref: '#/components/examples/ValidationProblem'
+    SessionValidationError:
+      description: Entrada inválida (`validation-error`) ou início no passado (`session-starts-in-past`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            startsInPast:
+              summary: Início no passado
+              value:
+                type: /problems/session-starts-in-past
+                title: Requisição inválida
+                status: 400
+                detail: A sessão precisa começar no futuro.
+                instance: /admin/sessions
+            validation:
+              $ref: '#/components/examples/ValidationProblem'
+    UnknownSeatsOrValidation:
+      description: Entrada inválida (`validation-error`) ou rótulos fora do mapa (`unknown-seats`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unknownSeats:
+              summary: Assento fora do mapa
+              value:
+                type: /problems/unknown-seats
+                title: Requisição inválida
+                status: 400
+                detail: Assentos inexistentes no mapa da sala.
+                instance: /admin/theaters
+                unknownSeats: [Z99]
+            validation:
+              $ref: '#/components/examples/ValidationProblem'
+
+    Unauthorized:
+      description: Token ausente (`missing-token`), inválido, expirado ou de outra API (`invalid-token`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            examples: ["Bearer"]
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/missing-token
+            title: Não autenticado
+            status: 401
+            detail: 'Envie o token no cabeçalho Authorization: Bearer <token>.'
+            instance: /reservations
+    InvalidCredentials:
+      description: E-mail ou senha inválidos, ou usuário de outro papel.
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            examples: ["Bearer"]
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/invalid-credentials
+            title: Não autenticado
+            status: 401
+            detail: E-mail ou senha inválidos.
+            instance: /auth/login
+
+    SessionNotFound:
+      description: Sessão não encontrada.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/session-not-found
+            title: Recurso não encontrado
+            status: 404
+            detail: Sessão não encontrada.
+            instance: /sessions/0190f0e0-1111-7000-8000-000000000001
+    ReservationNotFound:
+      description: Reserva não encontrada ou de outro cliente.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/reservation-not-found
+            title: Recurso não encontrado
+            status: 404
+            detail: Reserva não encontrada.
+            instance: /reservations/0190f0e0-3333-7000-8000-000000000001
+    TheaterNotFound:
+      description: Sala não encontrada.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/theater-not-found
+            title: Recurso não encontrado
+            status: 404
+            detail: Sala não encontrada.
+            instance: /admin/theaters/0190f0e0-5555-7000-8000-000000000001
+    MovieNotFound:
+      description: Filme não encontrado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/movie-not-found
+            title: Recurso não encontrado
+            status: 404
+            detail: Filme não encontrado.
+            instance: /admin/movies/0190f0e0-4444-7000-8000-000000000001
+    MovieOrTheaterNotFound:
+      description: Filme (`movie-not-found`) ou Sala (`theater-not-found`) não encontrados.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/movie-not-found
+            title: Recurso não encontrado
+            status: 404
+            detail: Filme não encontrado.
+            instance: /admin/sessions
+
+    TheaterNameTaken:
+      description: Já existe uma Sala com esse nome.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/theater-name-taken
+            title: Conflito
+            status: 409
+            detail: Já existe uma sala com esse nome.
+            instance: /admin/theaters
+    InUse:
+      description: O recurso tem dependentes e não pode ser removido.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            inUse:
+              $ref: '#/components/examples/InUse'
+    SessionOverlap:
+      description: A Sessão se sobrepõe a outra na mesma Sala.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            overlap:
+              $ref: '#/components/examples/SessionOverlap'
+    SessionConflict:
+      description: Sobreposição na Sala ou Sessão com Reserva ativa.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            overlap:
+              $ref: '#/components/examples/SessionOverlap'
+            activeReservations:
+              $ref: '#/components/examples/SessionHasActiveReservations'

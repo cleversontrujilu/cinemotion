@@ -57,7 +57,7 @@ export function mountCatalogAdminRoutes(router: Router, deps: CatalogDeps & { to
   router.post('/theaters', auth, async (req, res) => {
     const body = parseInput(createTheaterBody, req.body);
     const theater = await theaters.create(body);
-    res.status(201).location(`/theaters/${theater.id}`).json(theater);
+    res.status(201).location(`${req.baseUrl}/theaters/${theater.id}`).json(theater);
   });
   router.get('/theaters', auth, async (_req, res) => {
     res.json(await theaters.list());
@@ -85,7 +85,7 @@ export function mountCatalogAdminRoutes(router: Router, deps: CatalogDeps & { to
   // Filmes
   router.post('/movies', auth, async (req, res) => {
     const movie = await movies.create(parseInput(createMovieBody, req.body));
-    res.status(201).location(`/movies/${movie.id}`).json(movie);
+    res.status(201).location(`${req.baseUrl}/movies/${movie.id}`).json(movie);
   });
   router.get('/movies', auth, async (_req, res) => {
     res.json(await movies.list());
@@ -107,7 +107,7 @@ export function mountCatalogAdminRoutes(router: Router, deps: CatalogDeps & { to
   // Sessões
   router.post('/sessions', auth, async (req, res) => {
     const session = await sessions.create(parseInput(createSessionBody, req.body));
-    res.status(201).location(`/sessions/${session.id}`).json(presentSession(session));
+    res.status(201).location(`${req.baseUrl}/sessions/${session.id}`).json(presentSession(session));
   });
   router.get('/sessions', auth, async (req, res) => {
     const page = await sessions.list(parseInput(adminListSessionsQuery, req.query));

@@ -69,16 +69,21 @@ describe('autenticação nas duas APIs', () => {
     expect(res.body.errors.map((e: { path: string }) => e.path).sort()).toEqual(['email', 'password']);
   });
 
+  it('a API admin responde só sob /admin', async () => {
+    expect((await request(adminApp).get('/admin/health')).status).toBe(200);
+    expect((await request(adminApp).post('/auth/login').send({})).status).toBe(404);
+  });
+
   it('a API admin não tem cadastro', async () => {
     const res = await request(adminApp)
-      .post('/auth/register')
+      .post('/admin/auth/register')
       .send({ email: 'novo@admin.dev', password: 'Senha@123' });
     expect(res.status).toBe(404);
   });
 
   it('admin entra só na API admin', async () => {
     const credentials = { email: 'admin@cinemotion.dev', password: 'Senha@123' };
-    expect((await request(adminApp).post('/auth/login').send(credentials)).status).toBe(200);
+    expect((await request(adminApp).post('/admin/auth/login').send(credentials)).status).toBe(200);
 
     const onCustomer = await request(customerApp).post('/auth/login').send(credentials);
     expect(onCustomer.status).toBe(401);
@@ -90,7 +95,7 @@ describe('autenticação nas duas APIs', () => {
       .post('/auth/login')
       .send({ email: 'ana@email.com', password: 'Senha@123' });
 
-    const res = await request(adminApp).get('/auth/me').set('authorization', `Bearer ${body.accessToken}`);
+    const res = await request(adminApp).get('/admin/auth/me').set('authorization', `Bearer ${body.accessToken}`);
     expect(res.status).toBe(401);
     expect(res.headers['www-authenticate']).toBe('Bearer');
     expect(res.body.type).toBe('/problems/invalid-token');

@@ -2,7 +2,7 @@
 # Uma seção por API. Ajuste as URLs para o ambiente local ou para o deploy na AWS.
 
 @customerUrl = http://localhost:3000
-@adminUrl = http://localhost:3001
+@adminUrl = http://localhost:3001/admin
 
 ### ============================== API cliente ==============================
 
