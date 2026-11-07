@@ -22,14 +22,14 @@ const servers = [
     auth: loadAuthConfig(env, 'CUSTOMER_JWT_SECRET'),
     timezone: customerDb.timezone,
   }).listen(customerPort, () =>
-    console.log(`API cliente em http://localhost:${customerPort}`),
+    console.log(`API cliente em http://localhost:${customerPort}/api`),
   ),
   createAdminApp({
     pool: adminPool,
     auth: loadAuthConfig(env, 'ADMIN_JWT_SECRET'),
     timezone: adminDb.timezone,
   }).listen(adminPort, () =>
-    console.log(`API admin   em http://localhost:${adminPort}/admin`),
+    console.log(`API admin   em http://localhost:${adminPort}/api/admin`),
   ),
 ];
 

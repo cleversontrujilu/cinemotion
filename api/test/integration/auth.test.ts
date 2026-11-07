@@ -37,19 +37,19 @@ describe('autenticação nas duas APIs', () => {
 
   it('cliente se cadastra, faz login e consulta /auth/me', async () => {
     const created = await request(customerApp)
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({ email: 'Ana@Email.com', password: 'Senha@123' });
     expect(created.status).toBe(201);
     expect(created.body).toEqual({ id: expect.any(String), email: 'ana@email.com', role: 'customer' });
 
     const logged = await request(customerApp)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ email: 'ana@email.com', password: 'Senha@123' });
     expect(logged.status).toBe(200);
     expect(logged.body).toMatchObject({ tokenType: 'Bearer', expiresIn: 3600 });
 
     const me = await request(customerApp)
-      .get('/auth/me')
+      .get('/api/auth/me')
       .set('authorization', `Bearer ${logged.body.accessToken}`);
     expect(me.status).toBe(200);
     expect(me.body).toEqual(created.body);
@@ -57,52 +57,57 @@ describe('autenticação nas duas APIs', () => {
 
   it('e-mail repetido (qualquer caixa) dá 409 email-taken', async () => {
     const res = await request(customerApp)
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({ email: 'ANA@email.com', password: 'Senha@123' });
     expect(res.status).toBe(409);
     expect(res.body.type).toBe('/problems/email-taken');
   });
 
   it('cadastro valida a entrada', async () => {
-    const res = await request(customerApp).post('/auth/register').send({ email: 'x', password: '123' });
+    const res = await request(customerApp).post('/api/auth/register').send({ email: 'x', password: '123' });
     expect(res.status).toBe(400);
     expect(res.body.errors.map((e: { path: string }) => e.path).sort()).toEqual(['email', 'password']);
   });
 
-  it('a API admin responde só sob /admin', async () => {
-    expect((await request(adminApp).get('/admin/health')).status).toBe(200);
-    expect((await request(adminApp).post('/auth/login').send({})).status).toBe(404);
+  it('a API admin responde só sob /api/admin', async () => {
+    expect((await request(adminApp).get('/api/admin/health')).status).toBe(200);
+    expect((await request(adminApp).post('/api/auth/login').send({})).status).toBe(404);
+  });
+
+  it('a API cliente responde só sob /api', async () => {
+    expect((await request(customerApp).get('/api/health')).status).toBe(200);
+    expect((await request(customerApp).get('/health')).status).toBe(404);
   });
 
   it('a API admin não tem cadastro', async () => {
     const res = await request(adminApp)
-      .post('/admin/auth/register')
+      .post('/api/admin/auth/register')
       .send({ email: 'novo@admin.dev', password: 'Senha@123' });
     expect(res.status).toBe(404);
   });
 
   it('admin entra só na API admin', async () => {
     const credentials = { email: 'admin@cinemotion.dev', password: 'Senha@123' };
-    expect((await request(adminApp).post('/admin/auth/login').send(credentials)).status).toBe(200);
+    expect((await request(adminApp).post('/api/admin/auth/login').send(credentials)).status).toBe(200);
 
-    const onCustomer = await request(customerApp).post('/auth/login').send(credentials);
+    const onCustomer = await request(customerApp).post('/api/auth/login').send(credentials);
     expect(onCustomer.status).toBe(401);
     expect(onCustomer.body.type).toBe('/problems/invalid-credentials');
   });
 
   it('token da API cliente é recusado na API admin', async () => {
     const { body } = await request(customerApp)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ email: 'ana@email.com', password: 'Senha@123' });
 
-    const res = await request(adminApp).get('/admin/auth/me').set('authorization', `Bearer ${body.accessToken}`);
+    const res = await request(adminApp).get('/api/admin/auth/me').set('authorization', `Bearer ${body.accessToken}`);
     expect(res.status).toBe(401);
     expect(res.headers['www-authenticate']).toBe('Bearer');
     expect(res.body.type).toBe('/problems/invalid-token');
   });
 
   it('rota protegida sem token dá 401 missing-token', async () => {
-    const res = await request(customerApp).get('/auth/me');
+    const res = await request(customerApp).get('/api/auth/me');
     expect(res.status).toBe(401);
     expect(res.body.type).toBe('/problems/missing-token');
   });

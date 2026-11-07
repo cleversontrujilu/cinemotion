@@ -27,12 +27,12 @@ describe('reservas', () => {
 
   const reserve = (who: number, sessionId: string, labels: string[]) =>
     request(app)
-      .post('/reservations')
+      .post('/api/reservations')
       .set(bearer(who))
       .send({ sessionId, seatIds: labels.map((l) => seat[l]) });
 
   const occupancy = async (sessionId: string) => {
-    const res = await request(app).get(`/sessions/${sessionId}/seats`);
+    const res = await request(app).get(`/api/sessions/${sessionId}/seats`);
     return Object.fromEntries(res.body.seats.map((s: { label: string; state: string }) => [s.label, s.state]));
   };
 
@@ -82,7 +82,7 @@ describe('reservas', () => {
     );
     tokens = await Promise.all(
       emails.map(async (email) => {
-        const res = await request(app).post('/auth/login').send({ email, password: 'Senha@123' });
+        const res = await request(app).post('/api/auth/login').send({ email, password: 'Senha@123' });
         return res.body.accessToken as string;
       }),
     );
@@ -96,7 +96,7 @@ describe('reservas', () => {
 
   describe('mapa de ocupação', () => {
     it('é público e mostra livres e indisponíveis', async () => {
-      const res = await request(app).get(`/sessions/${tomorrow}/seats`);
+      const res = await request(app).get(`/api/sessions/${tomorrow}/seats`);
       expect(res.status).toBe(200);
       expect(res.body.summary).toEqual({ available: 9, reserved: 0, sold: 0, unavailable: 1 });
       expect(res.body.seats[0]).toMatchObject({ label: 'A1', row: 'A', number: 1, state: 'available' });
@@ -104,7 +104,7 @@ describe('reservas', () => {
     });
 
     it('sessão inexistente dá 404', async () => {
-      const res = await request(app).get('/sessions/0190f0e0-0000-7000-8000-000000000000/seats');
+      const res = await request(app).get('/api/sessions/0190f0e0-0000-7000-8000-000000000000/seats');
       expect(res.status).toBe(404);
     });
   });
@@ -113,7 +113,7 @@ describe('reservas', () => {
     let anaReservation: string;
 
     it('exige token de cliente', async () => {
-      const res = await request(app).post('/reservations').send({ sessionId: tomorrow, seatIds: [seat.A1] });
+      const res = await request(app).post('/api/reservations').send({ sessionId: tomorrow, seatIds: [seat.A1] });
       expect(res.status).toBe(401);
     });
 
@@ -160,7 +160,7 @@ describe('reservas', () => {
 
     it('recusa assento de outra sala', async () => {
       const res = await request(app)
-        .post('/reservations')
+        .post('/api/reservations')
         .set(bearer(1))
         .send({ sessionId: tomorrow, seatIds: [otherTheaterSeat] });
       expect(res.status).toBe(400);
@@ -182,9 +182,9 @@ describe('reservas', () => {
 
     it('reserva de outro cliente não aparece (404)', async () => {
       for (const res of [
-        await request(app).get(`/reservations/${anaReservation}`).set(bearer(1)),
-        await request(app).post(`/reservations/${anaReservation}/confirm`).set(bearer(1)),
-        await request(app).post(`/reservations/${anaReservation}/cancel`).set(bearer(1)),
+        await request(app).get(`/api/reservations/${anaReservation}`).set(bearer(1)),
+        await request(app).post(`/api/reservations/${anaReservation}/confirm`).set(bearer(1)),
+        await request(app).post(`/api/reservations/${anaReservation}/cancel`).set(bearer(1)),
       ]) {
         expect(res.status).toBe(404);
         expect(res.body.type).toBe('/problems/reservation-not-found');
@@ -192,20 +192,20 @@ describe('reservas', () => {
     });
 
     it('confirmar transforma em Venda, e confirmar de novo é idempotente', async () => {
-      const first = await request(app).post(`/reservations/${anaReservation}/confirm`).set(bearer(0));
+      const first = await request(app).post(`/api/reservations/${anaReservation}/confirm`).set(bearer(0));
       expect(first.status).toBe(200);
       expect(first.body).toMatchObject({ status: 'confirmed', confirmedAt: expect.any(String) });
 
-      const again = await request(app).post(`/reservations/${anaReservation}/confirm`).set(bearer(0));
+      const again = await request(app).post(`/api/reservations/${anaReservation}/confirm`).set(bearer(0));
       expect(again.status).toBe(200);
       expect(again.body.confirmedAt).toBe(first.body.confirmedAt);
       expect((await occupancy(tomorrow)).A1).toBe('sold');
     });
 
     it('lista as reservas do próprio cliente', async () => {
-      const res = await request(app).get('/reservations').set(bearer(0));
+      const res = await request(app).get('/api/reservations').set(bearer(0));
       expect(res.body.map((r: { id: string }) => r.id)).toContain(anaReservation);
-      expect((await request(app).get('/reservations').set(bearer(1))).body).toEqual([]);
+      expect((await request(app).get('/api/reservations').set(bearer(1))).body).toEqual([]);
     });
   });
 
@@ -222,13 +222,13 @@ describe('reservas', () => {
     });
 
     it('reserva vencida aparece como expirada e o assento como livre, sem job', async () => {
-      const res = await request(app).get(`/reservations/${overdue}`).set(bearer(0));
+      const res = await request(app).get(`/api/reservations/${overdue}`).set(bearer(0));
       expect(res.body.status).toBe('expired');
       expect((await occupancy(tomorrow)).A4).toBe('available');
     });
 
     it('não pode mais ser confirmada', async () => {
-      const res = await request(app).post(`/reservations/${overdue}/confirm`).set(bearer(0));
+      const res = await request(app).post(`/api/reservations/${overdue}/confirm`).set(bearer(0));
       expect(res.status).toBe(409);
       expect(res.body.type).toBe('/problems/reservation-expired');
     });
@@ -250,13 +250,13 @@ describe('reservas', () => {
     it('cancela e libera os assentos; cancelar de novo é idempotente', async () => {
       const id = (await reserve(2, tomorrow, ['A5'])).body.id;
 
-      const res = await request(app).post(`/reservations/${id}/cancel`).set(bearer(2));
+      const res = await request(app).post(`/api/reservations/${id}/cancel`).set(bearer(2));
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({ status: 'cancelled', cancelledAt: expect.any(String) });
       expect((await occupancy(tomorrow)).A5).toBe('available');
 
-      expect((await request(app).post(`/reservations/${id}/cancel`).set(bearer(2))).status).toBe(200);
-      const confirm = await request(app).post(`/reservations/${id}/confirm`).set(bearer(2));
+      expect((await request(app).post(`/api/reservations/${id}/cancel`).set(bearer(2))).status).toBe(200);
+      const confirm = await request(app).post(`/api/reservations/${id}/confirm`).set(bearer(2));
       expect(confirm.status).toBe(409);
       expect(confirm.body.type).toBe('/problems/reservation-cancelled');
     });
@@ -265,7 +265,7 @@ describe('reservas', () => {
       const created = await reserve(2, inOneHour, ['A1']);
       expect(created.status).toBe(201);
 
-      const res = await request(app).post(`/reservations/${created.body.id}/cancel`).set(bearer(2));
+      const res = await request(app).post(`/api/reservations/${created.body.id}/cancel`).set(bearer(2));
       expect(res.status).toBe(409);
       expect(res.body).toMatchObject({ type: '/problems/cancellation-deadline-passed', deadline: expect.any(String) });
     });
