@@ -9,7 +9,7 @@
 #
 # Pré-requisitos:
 #   1. Banco com schema e seed:  npm run db:reset -w api   (cria admin@cinemotion.dev)
-#   2. APIs no ar:               npm run dev -w api        (cliente :3000, admin :3001/admin)
+#   2. APIs no ar:               npm run dev -w api        (cliente :3000/api, admin :3001/api/admin)
 #
 # A collection cria a própria Sala, Filme e Sessões, com nomes e e-mail únicos por execução,
 # então pode ser rodada várias vezes sem limpar o banco.
@@ -19,8 +19,8 @@
 #
 # Para o ambiente publicado, troque as duas URLs abaixo.
 
-@customerUrl = http://localhost:3000
-@adminUrl = http://localhost:3001/admin
+@customerUrl = http://localhost:3000/api
+@adminUrl = http://localhost:3001/api/admin
 @adminEmail = admin@cinemotion.dev
 @password = Senha@123
 
