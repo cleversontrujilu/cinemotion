@@ -4,7 +4,7 @@
  */
 import { createAdminApp } from './apps/admin.js';
 import { createCustomerApp } from './apps/customer.js';
-import { loadDbConfig } from './config/env.js';
+import { loadAuthConfig, loadDbConfig } from './config/env.js';
 import { createPool } from './shared/db/pool.js';
 
 const env = process.env;
@@ -15,10 +15,10 @@ const customerPool = createPool(loadDbConfig(env, 'CUSTOMER_DATABASE_URL'));
 const adminPool = createPool(loadDbConfig(env, 'ADMIN_DATABASE_URL'));
 
 const servers = [
-  createCustomerApp({ pool: customerPool }).listen(customerPort, () =>
+  createCustomerApp({ pool: customerPool, auth: loadAuthConfig(env, 'CUSTOMER_JWT_SECRET') }).listen(customerPort, () =>
     console.log(`API cliente em http://localhost:${customerPort}`),
   ),
-  createAdminApp({ pool: adminPool }).listen(adminPort, () =>
+  createAdminApp({ pool: adminPool, auth: loadAuthConfig(env, 'ADMIN_JWT_SECRET') }).listen(adminPort, () =>
     console.log(`API admin   em http://localhost:${adminPort}`),
   ),
 ];

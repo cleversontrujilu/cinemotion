@@ -1,9 +1,10 @@
 import serverless from 'serverless-http';
 import { createCustomerApp } from '../apps/customer.js';
-import { loadDbConfig } from '../config/env.js';
+import { loadAuthConfig, loadDbConfig } from '../config/env.js';
 import { createPool } from '../shared/db/pool.js';
 
-// Fora do handler: o pool é reaproveitado enquanto a instância da Lambda viver.
+// Fora do handler: config e pool são reaproveitados enquanto a instância da Lambda viver.
 const pool = createPool(loadDbConfig(process.env));
+const auth = loadAuthConfig(process.env);
 
-export const handler = serverless(createCustomerApp({ pool }));
+export const handler = serverless(createCustomerApp({ pool, auth }));
