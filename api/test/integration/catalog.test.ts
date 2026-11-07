@@ -18,9 +18,9 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
   let token: string;
 
   const asAdmin = () => ({ authorization: `Bearer ${token}` });
-  const post = (path: string, body: object) => request(admin).post(path).set(asAdmin()).send(body);
-  const patch = (path: string, body: object) => request(admin).patch(path).set(asAdmin()).send(body);
-  const del = (path: string) => request(admin).delete(path).set(asAdmin());
+  const post = (path: string, body: object) => request(admin).post(`/admin${path}`).set(asAdmin()).send(body);
+  const patch = (path: string, body: object) => request(admin).patch(`/admin${path}`).set(asAdmin()).send(body);
+  const del = (path: string) => request(admin).delete(`/admin${path}`).set(asAdmin());
 
   let theaterId: string;
   let movieId: string;
@@ -40,7 +40,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
     customer = createCustomerApp({ pool: customerPool, auth: authConfig });
 
     const login = await request(admin)
-      .post('/auth/login')
+      .post('/admin/auth/login')
       .send({ email: 'admin@cinemotion.dev', password: 'Senha@123' });
     token = login.body.accessToken;
   });
@@ -52,7 +52,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
 
   describe('Salas', () => {
     it('escrita exige token de admin', async () => {
-      const res = await request(admin).post('/theaters').send({ name: 'X', rows: 1, seatsPerRow: 1 });
+      const res = await request(admin).post('/admin/theaters').send({ name: 'X', rows: 1, seatsPerRow: 1 });
       expect(res.status).toBe(401);
     });
 
@@ -66,7 +66,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
       });
 
       expect(res.status).toBe(201);
-      expect(res.headers.location).toBe(`/theaters/${res.body.id}`);
+      expect(res.headers.location).toBe(`/admin/theaters/${res.body.id}`);
       expect(res.body.seats).toHaveLength(120);
       expect(res.body.seats.at(-1).label).toBe('J12');
       const byLabel = Object.fromEntries(res.body.seats.map((s: { label: string }) => [s.label, s]));
@@ -111,12 +111,12 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
       });
       expect(res.status).toBe(400);
       expect(res.body.unknownSeats).toEqual(['Z99']);
-      const theater = await request(admin).get(`/theaters/${theaterId}`).set(asAdmin());
+      const theater = await request(admin).get(`/admin/theaters/${theaterId}`).set(asAdmin());
       expect(theater.body.seats.find((s: { label: string }) => s.label === 'A5').underMaintenance).toBe(false);
     });
 
     it('sala inexistente dá 404', async () => {
-      const res = await request(admin).get('/theaters/0190f0e0-0000-7000-8000-000000000000').set(asAdmin());
+      const res = await request(admin).get('/admin/theaters/0190f0e0-0000-7000-8000-000000000000').set(asAdmin());
       expect(res.status).toBe(404);
       expect(res.body.type).toBe('/problems/theater-not-found');
     });
@@ -183,7 +183,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
 
     it('mudar a duração do filme não altera o fim das sessões existentes', async () => {
       await patch(`/movies/${movieId}`, { duration: 90 });
-      const res = await request(admin).get(`/sessions/${sessionId}`).set(asAdmin());
+      const res = await request(admin).get(`/admin/sessions/${sessionId}`).set(asAdmin());
       expect(res.body.endsAt).toBe('2030-01-02T00:15:00.000Z');
     });
 
@@ -276,7 +276,7 @@ describe('catálogo: Salas, Filmes e Sessões', () => {
     });
 
     it('admin pode incluir sessões passadas', async () => {
-      const res = await request(admin).get('/sessions').set(asAdmin()).query({ includePast: 'true' });
+      const res = await request(admin).get('/admin/sessions').set(asAdmin()).query({ includePast: 'true' });
       expect(res.body.total).toBe(5);
     });
 

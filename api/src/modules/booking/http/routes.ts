@@ -32,7 +32,7 @@ export function mountBookingRoutes(router: Router, deps: BookingDeps & { tokens:
   router.post('/reservations', auth, async (req, res) => {
     const body = parseInput(reserveBody, req.body);
     const reservation = await booking.reserve(currentUser(req).id, body);
-    res.status(201).location(`/reservations/${reservation.id}`).json(presentReservation(reservation));
+    res.status(201).location(`${req.baseUrl}/reservations/${reservation.id}`).json(presentReservation(reservation));
   });
 
   router.get('/reservations', auth, async (req, res) => {
