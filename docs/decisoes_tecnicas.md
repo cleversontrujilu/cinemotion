@@ -46,9 +46,11 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 
 ## Banco de dados
 
-- **Migrations versionadas com `node-pg-migrate`**, em SQL puro (`migrations/0001_init.sql`, ...). A primeira migration parte do `model.sql` atual e inclui os roles da aplicação. Toda mudança de schema posterior vira uma migration nova.
+- **Migrations versionadas com `node-pg-migrate`**, em SQL puro (`api/migrations/0001_init.sql`, ...). A primeira migration parte do `model.sql` e inclui os roles da aplicação. Toda mudança de schema posterior vira uma migration nova.
+- A `0001` corrige o que o export do pgModeler ainda tinha de errado: a grafia `is_accessible`, a FK composta `reservation_seat (reservation_id, session_id) → reservation (id, session_id)` (o assento retido pertence à mesma Sessão da Reserva), a unicidade de fileira/número por Sala (`ux_seat_theater_row_number`), a duração positiva do Filme e o prefixo `ck_` no check de preço.
+- Os roles `cinemotion_admin` e `cinemotion_customer` são criados **sem senha**. A senha é definida fora do repositório (`ALTER ROLE ... PASSWORD`). O `db:reset` define senhas de desenvolvimento só no banco local.
 - O pgModeler (`docs/model/`) passa a ser só o diagrama de referência, e não a fonte do schema.
-- O seed fica separado das migrations. `reset.sql` recria e popula o banco localmente.
+- O seed fica separado das migrations (`api/seeds/seed.sql`). `npm run db:reset -w api` recria o banco local, aplica as migrations e o seed.
 - No deploy, as migrations rodam num passo explícito (`npm run migrate`) **antes** do `tofu apply`, da máquina local, com uma credencial de *owner* separada dos roles da aplicação. As Lambdas nunca migram o banco.
 - As chaves primárias usam `uuidv7()`, nativo apenas no **PostgreSQL 18**. Se o banco da AWS for de outra versão, isso é ajustado no deploy.
 - Todo horário é gravado em `timestamptz`.
@@ -61,6 +63,7 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 - A Reserva é criada numa única transação que insere todos os assentos de uma vez, sem `SELECT ... FOR UPDATE` prévio. Se algum assento já estiver ocupado, a transação inteira é desfeita ("todos ou nenhum").
 - Na violação de unicidade, a API responde **409** com a lista completa dos assentos em conflito (`conflictingSeats`). Como o Postgres informa só o primeiro, essa lista vem de uma consulta feita depois do rollback.
 - Um teste de integração dispara requisições simultâneas para o mesmo assento e verifica que exatamente uma é aceita. Ele roda contra um PostgreSQL 18 descartável criado pelo **Testcontainers**, com as migrations aplicadas.
+- Alternativa sem Docker: com `TEST_DATABASE_URL` apontando para um PostgreSQL 18 já rodando (superusuário), os testes criam um banco temporário nesse servidor e o removem no fim.
 
 ### Expiração de Reservas pendentes
 
@@ -103,9 +106,14 @@ Os erros seguem Problem Details (RFC 9457). A mensagem crua do Postgres nunca ch
 | 23P01 | `session_no_overlap` | 409 | `session-overlap` |
 | 23505 | `ux_theater_name` | 409 | `theater-name-taken` |
 | 23505 | `ux_app_user_email` | 409 | `email-taken` |
-| 23514 | `ck_*` / `*_chk` | 400 | `validation-error` |
-| 23503 | FK | 404 / 409 | `not-found` / `in-use` |
+| 23505 | `ux_seat_theater_row_number` | 409 | `seat-duplicated` |
+| 23505 | outro índice único | 409 | `conflict` |
+| 23514, 23502, 22P02, 22001, 22003 | `ck_*` / `*_chk` e afins | 400 | `validation-error` |
+| 23001 | FK com `ON DELETE RESTRICT` | 409 | `in-use` |
+| 23503 | FK (referência inexistente / ainda referenciado) | 404 / 409 | `not-found` / `in-use` |
 | outro | — | 500 | genérico, sem detalhes, com log |
+
+O `type` é uma referência relativa `/problems/<código>` (ex.: `/problems/seat-already-taken`), e o corpo sai com `Content-Type: application/problem+json`. Falhas de validação de entrada trazem a lista `errors` (`path`, `message`).
 
 Os nomes das constraints são parte desse contrato e não devem ser renomeados sem atualizar o tradutor.
 
