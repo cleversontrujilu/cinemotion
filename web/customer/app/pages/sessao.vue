@@ -6,6 +6,7 @@ useHead({ title: 'Escolha os assentos' })
 
 const api = useApi()
 const route = useRoute()
+const router = useRouter()
 const toast = useToast()
 const { loggedIn } = useAuth()
 
@@ -58,6 +59,7 @@ const clickable = (seat: GridSeat) => (seat as OccupancySeat).state === 'availab
 
 function toggle(seat: GridSeat) {
   conflicts.value = []
+  reserveError.value = ''
   if (selected.value.includes(seat.id)) {
     selected.value = selected.value.filter(id => id !== seat.id)
   } else if (selected.value.length >= MAX_SEATS_PER_RESERVATION) {
@@ -73,13 +75,19 @@ const selectedLabels = computed(() =>
 const total = computed(() => (session.value?.price ?? 0) * selected.value.length)
 
 const reserving = ref(false)
+// Erro que não é conflito de assento (ex.: falha na API): fica visível no card até a próxima tentativa.
+const reserveError = ref('')
 
+// Quem não está logado vai para o login levando os assentos na volta (`&assentos=`);
+// ao voltar logado, a reserva é feita sozinha e segue para o pagamento.
 async function reserve() {
   if (!loggedIn.value) {
     toast.add({ title: 'Entre na sua conta para reservar.', icon: 'i-lucide-log-in' })
-    return navigateTo({ path: '/entrar', query: { redirect: route.fullPath } })
+    const back = router.resolve({ path: '/sessao', query: { id: sessionId.value, assentos: selected.value.join(',') } })
+    return navigateTo({ path: '/entrar', query: { redirect: back.fullPath } })
   }
   reserving.value = true
+  reserveError.value = ''
   try {
     const reservation = await api<Reservation>('/reservations', {
       method: 'POST',
@@ -98,12 +106,36 @@ async function reserve() {
         icon: 'i-lucide-armchair'
       })
     } else {
-      toast.add({ title: problemMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
+      reserveError.value = problemMessage(err)
+      toast.add({ title: 'Não foi possível reservar.', description: reserveError.value, color: 'error', icon: 'i-lucide-circle-alert' })
     }
     await refreshMap()
   } finally {
     reserving.value = false
   }
+}
+
+// Volta do login com `&assentos=`: restaura a escolha e reserva, se todos continuam livres.
+const pendingSeats = typeof route.query.assentos === 'string' ? route.query.assentos.split(',').filter(Boolean) : []
+if (pendingSeats.length) {
+  const stop = watch(map, (value) => {
+    if (!value) return
+    stop()
+    void router.replace({ query: { id: sessionId.value } })
+    const stillFree = pendingSeats.filter(id => seatById.value.get(id)?.state === 'available')
+    selected.value = stillFree.slice(0, MAX_SEATS_PER_RESERVATION)
+    if (!loggedIn.value || !selected.value.length) return
+    if (stillFree.length < pendingSeats.length) {
+      toast.add({
+        title: 'Alguns assentos que você escolheu foram reservados por outra pessoa.',
+        description: 'Confira a seleção e clique em Reservar.',
+        color: 'warning',
+        icon: 'i-lucide-armchair'
+      })
+      return
+    }
+    void reserve()
+  }, { immediate: true })
 }
 
 const legend: { look: SeatLook, label: string }[] = [
@@ -208,6 +240,14 @@ const legend: { look: SeatLook, label: string }[] = [
               </dd>
             </div>
           </dl>
+          <UAlert
+            v-if="reserveError"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-circle-alert"
+            title="Não foi possível reservar"
+            :description="reserveError"
+          />
           <UButton
             label="Reservar"
             icon="i-lucide-ticket"
