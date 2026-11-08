@@ -78,14 +78,16 @@ const reserving = ref(false)
 // Erro que não é conflito de assento (ex.: falha na API): fica visível no card até a próxima tentativa.
 const reserveError = ref('')
 
+function loginToReserve(title: string) {
+  toast.add({ title, icon: 'i-lucide-log-in' })
+  const back = router.resolve({ path: '/sessao', query: { id: sessionId.value, assentos: selected.value.join(',') } })
+  return navigateTo({ path: '/entrar', query: { redirect: back.fullPath } })
+}
+
 // Quem não está logado vai para o login levando os assentos na volta (`&assentos=`);
 // ao voltar logado, a reserva é feita sozinha e segue para o pagamento.
 async function reserve() {
-  if (!loggedIn.value) {
-    toast.add({ title: 'Entre na sua conta para reservar.', icon: 'i-lucide-log-in' })
-    const back = router.resolve({ path: '/sessao', query: { id: sessionId.value, assentos: selected.value.join(',') } })
-    return navigateTo({ path: '/entrar', query: { redirect: back.fullPath } })
-  }
+  if (!loggedIn.value) return loginToReserve('Entre na sua conta para reservar.')
   reserving.value = true
   reserveError.value = ''
   try {
@@ -96,6 +98,8 @@ async function reserve() {
     await navigateTo({ path: '/reserva', query: { id: reservation.id } })
   } catch (err) {
     const problem = asProblem(err)
+    // Token vencido ou de um usuário que não existe mais: o useApi já saiu da conta.
+    if (problem?.status === 401) return loginToReserve('Sua sessão expirou. Entre de novo para reservar.')
     if (problem?.conflictingSeats?.length) {
       conflicts.value = problem.conflictingSeats.map(s => s.id)
       selected.value = selected.value.filter(id => !conflicts.value.includes(id))
