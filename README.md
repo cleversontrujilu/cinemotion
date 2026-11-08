@@ -9,6 +9,13 @@ São duas APIs geradas a partir de um único código:
 | **Cliente** | `http://localhost:3000/api` | Clientes | Cadastro e login, catálogo público, mapa de ocupação, Reserva, confirmação (pagamento simulado) e cancelamento |
 | **Administrador** | `http://localhost:3001/api/admin` | Administradores | Login, Salas com mapa de assentos, Filmes e Sessões |
 
+E dois sites, um para cada API, em [`web/`](web/):
+
+| Site | Local | O que dá para fazer |
+|---|---|---|
+| **Cliente** | `http://localhost:3100` | Ver as sessões por filme e dia, escolher assentos no mapa, reservar (com a contagem dos 10 minutos), confirmar o pagamento simulado, cancelar e ver as próprias reservas |
+| **Administrador** | `http://localhost:3101` | Criar Salas e marcar no mapa os assentos acessíveis e em manutenção; cadastrar Filmes; criar, editar e excluir Sessões |
+
 - Documentação OpenAPI 3.2: [`docs/swagger.yaml`](docs/swagger.yaml)
 - Collection com os principais fluxos: [`http/cinemotion.http`](http/cinemotion.http) (REST Client) e [`http/cinemotion.postman_collection.json`](http/cinemotion.postman_collection.json) (Postman)
 - Vocabulário do domínio: [`GLOSSARY.md`](GLOSSARY.md)
@@ -37,7 +44,7 @@ São duas APIs geradas a partir de um único código:
 | Validação | zod, com mensagens em português |
 | Autenticação | JWT (HS256, `jose`) e senhas com bcrypt |
 | Testes | Vitest, Supertest e Testcontainers |
-| Frontends | Nuxt (SSG) + Tailwind no S3/CloudFront |
+| Frontends | Nuxt 4 (SSG) + Nuxt UI + Tailwind 4, no S3 atrás do CloudFront |
 | Infraestrutura | OpenTofu |
 
 **Por que não C#/.NET e Angular:** a stack da empresa foi considerada, mas escolhi Node.js/TypeScript e Nuxt pela familiaridade. Assim o tempo do desafio vai para o que ele avalia: as regras de negócio e a garantia de concorrência, que ficam no PostgreSQL (índice único parcial, exclusion constraint, locks) e valeriam igual em qualquer linguagem.
@@ -74,6 +81,15 @@ npm run dev -w api
 
 Para conferir: `curl localhost:3000/api/health` e `curl localhost:3001/api/admin/health` devem responder `{"status":"ok","database":"ok"}`.
 
+Com as APIs no ar, suba os sites, cada um no seu terminal:
+
+```bash
+npm run dev:customer   # site do cliente em http://localhost:3100
+npm run dev:admin      # site do admin   em http://localhost:3101
+```
+
+Cada site chama a sua API em `/api`, no próprio endereço: o `devProxy` do Nuxt encaminha para as portas 3000 e 3001, como o CloudFront faz na AWS (com a API em outra porta: `API_PROXY_TARGET=http://localhost:<porta> npm run dev:customer`). Para gerar os sites estáticos: `npm run build:web` (saída em `web/*/.output/public`).
+
 > **Atenção:** o `db:reset` apaga e recria o banco apontado por `MIGRATION_DATABASE_URL`.
 
 ### Usuários do seed
@@ -85,7 +101,7 @@ Todos usam a senha `Senha@123`.
 | Administrador | `admin@cinemotion.dev`, `gerente@cinemotion.dev` |
 | Cliente | `ana.souza@email.com`, `bruno.lima@email.com`, `joao.pereira@email.com` e outros 7 |
 
-Também dá para cadastrar um cliente novo em `POST /auth/register`. Administrador não tem cadastro público.
+Também dá para cadastrar um cliente novo no site ou em `POST /api/auth/register`. Administrador não tem cadastro público.
 
 ### Exemplo rápido
 
@@ -231,6 +247,8 @@ Pontos que o enunciado deixa em aberto e como foram resolvidos:
 - **Administradores** existem só via seed/migration. Não há cadastro nem promoção de usuário pela API.
 - **Reserva de outro Cliente** responde 404, sem revelar que ela existe.
 - **Todo controle de tempo** usa o relógio do banco (`now()` na transação), não o do servidor da API.
+- **Nos sites, as datas são sempre do fuso da rede**, mesmo que o navegador esteja em outro: o admin digita 19:30 e a Sessão começa às 19:30 de Brasília.
+- **Token no `localStorage`:** os sites são estáticos e a API usa Bearer, então o token fica no armazenamento do domínio de cada site e expira em 1 hora. Os sites não carregam scripts de terceiros, o que reduz o risco de XSS ler o token.
 
 ## Decisões técnicas
 
@@ -254,6 +272,8 @@ O detalhamento está em [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md)
 
 **Arquitetura.** Módulos `catalog`, `booking` e `identity`, cada um com `domain` (regras puras, sem I/O), `application` (casos de uso e transações), `infrastructure` (repositórios SQL) e `http` (rotas, validação e apresentação). O domínio não conhece HTTP nem SQL, e por isso as regras são testáveis sem banco.
 
+**Sites estáticos.** Dois projetos Nuxt (`web/customer` e `web/admin`) que estendem uma camada comum (`web/shared`: cliente HTTP, sessão, formatação de datas e o mapa de assentos). Assim nenhuma tela do admin vai para o site público. Os dados vêm da API no navegador, e as páginas de um item usam a query (`/sessao?id=…`), porque o site é gerado sem conhecer os ids e não precisa de regra de reescrita no CloudFront. A regra de negócio fica na API: os sites só orientam (limite de 6 assentos, prazo de cancelamento) e mostram o `detail` do Problem Details quando a API recusa.
+
 **Deploy.** Lambda + API Gateway HTTP API por API, frontends Nuxt SSG no S3 via CloudFront, tudo em OpenTofu, sem domínio próprio. Cada Lambda usa um `pg.Pool` com uma conexão e concorrência reservada limitada, para não esgotar as conexões do Postgres sem precisar de RDS Proxy.
 
 ## O que ficou de fora
@@ -270,6 +290,7 @@ O detalhamento está em [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md)
 | Refresh token e logout | O token dura 1 hora; para o escopo, autenticação simples basta |
 | RDS Proxy | Custo; a concorrência é limitada na própria Lambda |
 | Domínio próprio | São usadas as URLs padrão da AWS, que já têm HTTPS |
+| Testes automatizados dos sites | Prazo; as regras estão na API, que tem os testes. Os fluxos dos dois sites foram verificados no navegador |
 
 ## Estrutura do repositório
 
@@ -288,7 +309,10 @@ api/                  API (Express + TypeScript), um código para as duas Lambda
 docs/                 decisões técnicas, ADRs, swagger.yaml, modelo do banco
 http/                 collection .http
 infra/                OpenTofu
-web/                  frontends Nuxt (customer, admin e shared)
+web/
+  shared/             camada Nuxt comum: cliente HTTP, sessão, datas, mapa de assentos
+  customer/           site do cliente
+  admin/              site do administrador
 GLOSSARY.md           vocabulário do domínio
 ```
 

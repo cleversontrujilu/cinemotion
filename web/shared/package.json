@@ -1,0 +1,17 @@
+{
+  "name": "@cinemotion/web-shared",
+  "private": true,
+  "type": "module",
+  "description": "Camada Nuxt comum aos dois sites: cliente HTTP, sessão, formatação e mapa de assentos",
+  "main": "./nuxt.config.ts",
+  "scripts": {
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.145",
+    "@nuxt/ui": "^4.12.0",
+    "nuxt": "^4.6.2",
+    "tailwindcss": "^4.3.3"
+  }
+}

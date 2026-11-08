@@ -42,6 +42,11 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 
 - **Dois projetos Nuxt** no mesmo repositório (`web/customer` e `web/admin`), compartilhando componentes por uma pasta comum. Assim nenhuma página do admin entra no HTML estático público do cliente.
 - Nuxt SSG servido do S3 através do CloudFront, que dá HTTPS mesmo sem domínio próprio.
+- Nuxt 4 + **Nuxt UI 4** + Tailwind 4. A camada comum (`web/shared`) é um layer do Nuxt que os dois sites estendem: cliente HTTP (`useApi`), sessão (`useAuth`), formatação de datas no fuso da rede, leitura do Problem Details e o componente do mapa de assentos, usado na escolha do cliente e na edição da Sala.
+- **Os dados vêm da API no navegador**, nunca no `nuxt generate`: o build não depende da API estar no ar. Páginas de um item recebem o id pela query (`/sessao?id=…`, `/sala?id=…`), porque o site é gerado sem conhecer os ids; assim não há rotas dinâmicas nem regra de reescrita no CloudFront.
+- **Token Bearer no `localStorage`**, com o instante de expiração. Cookie httpOnly exigiria a API emitir e ler cookies, além de proteção contra CSRF; com sites estáticos sem scripts de terceiros e token de 1 hora, o `localStorage` é suficiente para o escopo. Resposta 401 descarta o token.
+- **Datas digitadas no fuso da rede:** o formulário de Sessão converte dia e hora para ISO 8601 com o offset de `America/Sao_Paulo` naquele instante (via `Intl`), independentemente do fuso do navegador.
+- No admin, todas as páginas exigem login. Quando o primeiro carregamento cai numa página protegida sem sessão, o redirecionamento para `/entrar` recarrega a página: trocar de layout durante a hidratação do HTML pré-renderizado deixaria a tela de login com o layout errado.
 - **Duas distribuições CloudFront**, uma por frontend, cada uma com seu bucket. Em cada uma, `/api/*` vai para o API Gateway da API correspondente e o resto vem do S3.
 
 ## Banco de dados
