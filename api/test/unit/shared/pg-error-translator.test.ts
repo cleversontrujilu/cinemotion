@@ -47,6 +47,11 @@ describe('translatePgError', () => {
     expect(err).toMatchObject({ kind: 'not-found', code: 'not-found' });
   });
 
+  it('usuário do token que não existe mais (reservation_app_user_fk) vira invalid-token (401)', () => {
+    const err = translatePgError(pgError('23503', { constraint: 'reservation_app_user_fk' }));
+    expect(err).toMatchObject({ kind: 'unauthorized', code: 'invalid-token' });
+  });
+
   it.each(['23514', '23502', '22P02'])('%s vira erro de validação', (code) => {
     expect(translatePgError(pgError(code, { constraint: 'ck_seat_number' }))).toMatchObject({
       kind: 'validation',

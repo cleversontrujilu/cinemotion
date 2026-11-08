@@ -60,9 +60,14 @@ export function translatePgError(err: PgErrorLike): DomainError | null {
       return new DomainError('conflict', 'in-use', 'O recurso está em uso e não pode ser removido.');
     case '23503':
       // Em DELETE/UPDATE do referenciado (FK NO ACTION) o Postgres diz "is still referenced from table".
-      return err.detail?.includes('is still referenced')
-        ? new DomainError('conflict', 'in-use', 'O recurso está em uso e não pode ser removido.')
-        : new DomainError('not-found', 'not-found', 'Um recurso referenciado não existe.');
+      if (err.detail?.includes('is still referenced')) {
+        return new DomainError('conflict', 'in-use', 'O recurso está em uso e não pode ser removido.');
+      }
+      // O usuário vem do token: se não existe mais (ex.: banco recriado), o token não vale.
+      if (constraint === 'reservation_app_user_fk') {
+        return new DomainError('unauthorized', 'invalid-token', 'O usuário do token não existe mais. Entre novamente.');
+      }
+      return new DomainError('not-found', 'not-found', 'Um recurso referenciado não existe.');
     case '23514': // check_violation
     case '23502': // not_null_violation
     case '22P02': // invalid_text_representation (ex.: uuid malformado)
