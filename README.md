@@ -88,7 +88,7 @@ npm run dev:customer   # site do cliente em http://localhost:3100
 npm run dev:admin      # site do admin   em http://localhost:3101
 ```
 
-Cada site chama a sua API em `/api`, no próprio endereço: o `devProxy` do Nuxt encaminha para as portas 3000 e 3001, como o CloudFront faz na AWS. Para gerar os sites estáticos: `npm run build:web` (saída em `web/*/.output/public`).
+Cada site chama a sua API em `/api`, no próprio endereço: o `devProxy` do Nuxt encaminha para as portas 3000 e 3001, como o CloudFront faz na AWS (com a API em outra porta: `API_PROXY_TARGET=http://localhost:<porta> npm run dev:customer`). Para gerar os sites estáticos: `npm run build:web` (saída em `web/*/.output/public`).
 
 > **Atenção:** o `db:reset` apaga e recria o banco apontado por `MIGRATION_DATABASE_URL`.
 

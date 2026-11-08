@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       routes: ['/', '/entrar', '/cadastro', '/sessao', '/reserva', '/minhas-reservas']
     },
     devProxy: {
-      '/api': { target: 'http://localhost:3000/api', changeOrigin: true }
+      '/api': { target: `${process.env.API_PROXY_TARGET ?? 'http://localhost:3000'}/api`, changeOrigin: true }
     }
   },
 

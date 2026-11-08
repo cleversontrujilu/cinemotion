@@ -18,7 +18,7 @@ export default defineNuxtConfig({
       routes: ['/', '/entrar', '/salas', '/sala', '/filmes']
     },
     devProxy: {
-      '/api': { target: 'http://localhost:3001/api', changeOrigin: true }
+      '/api': { target: `${process.env.API_PROXY_TARGET ?? 'http://localhost:3001'}/api`, changeOrigin: true }
     }
   },
 
