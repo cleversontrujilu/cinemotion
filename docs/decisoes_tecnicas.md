@@ -24,6 +24,10 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 - Infraestrutura como código com **OpenTofu**.
 - Código versionado no **GitHub**, em repositório público.
 - Sem domínio próprio. Tudo usa as URLs padrão da AWS (`*.execute-api...` e `*.cloudfront.net`).
+- Região `us-east-1`, a mesma do RDS. O RDS (PostgreSQL 18) é público, e as Lambdas ficam **fora da VPC**: sem NAT nem VPC endpoints, que custariam mais que o projeto inteiro. A conexão usa `sslmode=verify-full`, com a CA da Amazon carregada por `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem`.
+- **Segredos:** a `DATABASE_URL` de cada role fica num parâmetro SecureString do SSM (`/cinemotion/<api>/database-url`), criado fora do repositório. O OpenTofu lê o parâmetro e o passa como variável de ambiente da Lambda, que não acessa o SSM em tempo de execução. Os `JWT_SECRET` são gerados pelo próprio OpenTofu (`random_password`), um por API.
+- **State local** do OpenTofu, fora do git. Como ele contém os segredos, não é compartilhado. Um backend S3 só se justificaria com mais de uma pessoa ou com pipeline fazendo deploy.
+- Os sites são enviados ao S3 pelo próprio `tofu apply`. Os arquivos com hash no nome ficam em cache por um ano, e o resto é servido com `max-age=0`, por isso o deploy não precisa invalidar o CloudFront.
 
 ### APIs
 

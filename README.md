@@ -308,7 +308,7 @@ api/                  API (Express + TypeScript), um código para as duas Lambda
   test/               unit/ e integration/
 docs/                 decisões técnicas, ADRs, swagger.yaml, modelo do banco
 http/                 collection .http
-infra/                OpenTofu
+infra/                OpenTofu (deploy passo a passo em infra/README.md)
 web/
   shared/             camada Nuxt comum: cliente HTTP, sessão, datas, mapa de assentos
   customer/           site do cliente
