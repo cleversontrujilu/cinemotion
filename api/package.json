@@ -12,7 +12,7 @@
     "test:integration": "vitest run test/integration",
     "db:migrate": "node-pg-migrate up -m migrations -j sql --envPath .env -d MIGRATION_DATABASE_URL",
     "db:migrate:down": "node-pg-migrate down -m migrations -j sql --envPath .env -d MIGRATION_DATABASE_URL",
-    "db:seed": "sh -c \"set -a; [ -f .env ] && . ./.env; set +a; psql \\\"$MIGRATION_DATABASE_URL\\\" -v ON_ERROR_STOP=1 -f seeds/seed.sql\"",
+    "db:seed": "sh -c \"set -a; [ -f .env ] && . ./.env; set +a; psql \\\"\\$MIGRATION_DATABASE_URL\\\" -v ON_ERROR_STOP=1 -f seeds/seed.sql\"",
     "db:reset": "./scripts/db-reset.sh",
     "build:lambda": "node scripts/build-lambda.mjs"
   },
