@@ -1,0 +1,66 @@
+# Deploy na AWS a cada tag de versão (x.y.z), que o gfrf/gfhf do git flow publica ao
+# fechar uma release ou um hotfix. Autentica por OIDC no role cinemotion-github-deploy
+# (criado em infra/bootstrap), sem chave de acesso guardada no GitHub.
+name: Deploy
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+  id-token: write
+
+# Um deploy por vez, sem cancelar o que está em andamento (um apply interrompido deixa o
+# state travado).
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Migrations, build e tofu apply
+    runs-on: ubuntu-latest
+    # Sem `environment:`: com ele, o token OIDC passa a dizer "environment:<nome>" em vez
+    # da tag, e o trust do role (repo:...:ref:refs/tags/*) recusaria o deploy.
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::576060958067:role/cinemotion-github-deploy
+          role-session-name: cinemotion-deploy-${{ github.ref_name }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.13.2
+          # O wrapper reescreve stdout/stderr e esconde o progresso do apply.
+          tofu_wrapper: false
+
+      - run: npm ci
+
+      # A credencial do dono do banco só existe no SSM; o ::add-mask:: impede que ela
+      # apareça no log. O `pg` valida o certificado, então precisa da CA do RDS.
+      - name: Migrations
+        run: |
+          url=$(aws ssm get-parameter --name /cinemotion/owner/database-url --with-decryption --query Parameter.Value --output text)
+          echo "::add-mask::$url"
+          curl -fsS -o "$RUNNER_TEMP/rds-ca.pem" https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+          MIGRATION_DATABASE_URL="$url" NODE_EXTRA_CA_CERTS="$RUNNER_TEMP/rds-ca.pem" npm run db:migrate -w api
+
+      - run: npm run build:deploy
+
+      - run: tofu -chdir=infra init -input=false
+      - run: tofu -chdir=infra apply -input=false -auto-approve
+
+      - name: Endereços
+        run: tofu -chdir=infra output site_urls >> "$GITHUB_STEP_SUMMARY"

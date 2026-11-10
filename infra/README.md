@@ -13,7 +13,9 @@ Em cada distribuição, `/api/*` vai para o API Gateway da sua API, sem cache e 
 
 O banco é o RDS PostgreSQL 18 que já existe na conta. Ele é público e as Lambdas ficam fora da VPC, conectando com `sslmode=verify-full`. A CA do RDS vem de `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem`.
 
-O state é local (`infra/terraform.tfstate`, ignorado pelo git) e **contém segredos**: as `DATABASE_URL` lidas do SSM e os `JWT_SECRET` gerados aqui. Não versione esse arquivo nem o compartilhe. Se ele for perdido, um novo apply gera outros segredos JWT, e os tokens emitidos até então deixam de valer.
+O state fica no S3, em `s3://cinemotion-tfstate/infra/terraform.tfstate`, com lock nativo (um arquivo `.tflock` ao lado, sem DynamoDB). Assim a sua máquina e o GitHub Actions trabalham sobre o mesmo state. Ele **contém segredos** (as `DATABASE_URL` lidas do SSM e os `JWT_SECRET` gerados aqui), por isso o bucket é privado, criptografado e só aceita TLS. O bucket também é versionado: uma versão antiga do state pode ser recuperada por até 90 dias.
+
+O bucket é criado por [`bootstrap/`](bootstrap/), que tem o próprio state local (sem segredos). Ele só precisa ser aplicado de novo se o bucket mudar.
 
 ## Uma vez só
 
@@ -49,9 +51,31 @@ O state é local (`infra/terraform.tfstate`, ignorado pelo git) e **contém segr
 
    Para trocar uma senha depois, use `--overwrite` e rode o apply de novo.
 
-3. `cd infra && tofu init`
+3. **Credencial do dono para o CI**, lida só pelo role de deploy:
+
+   ```sh
+   aws ssm put-parameter --profile homeleft --type SecureString \
+     --name /cinemotion/owner/database-url \
+     --value 'postgres://cinemotion:<senha-do-dono>@<endpoint-rds>:5432/<banco>?sslmode=verify-full'
+   ```
+
+4. **Bootstrap** (bucket do state, provedor OIDC do GitHub e role `cinemotion-github-deploy`): `cd infra/bootstrap && tofu init && AWS_PROFILE=homeleft tofu apply`.
+
+5. `cd infra && AWS_PROFILE=homeleft tofu init`
 
 ## A cada deploy
+
+Pelo GitHub Actions: ao fechar uma release ou um hotfix (`gfrf`/`gfhf`), a tag `x.y.z` publicada dispara o [`deploy.yml`](../.github/workflows/deploy.yml). Ele assume o role `cinemotion-github-deploy` por OIDC, roda as migrations com a credencial do dono lida do SSM, gera os artefatos e faz o `tofu apply`. Os endereços aparecem no resumo da execução.
+
+Os PRs e os pushes de branch passam pelo [`ci.yml`](../.github/workflows/ci.yml) (typecheck, testes, builds e `tofu validate`), que não acessa a AWS.
+
+Para testar as permissões do role da sua máquina, um administrador da conta pode assumi-lo:
+
+```sh
+aws sts assume-role --profile homeleft --role-arn arn:aws:iam::576060958067:role/cinemotion-github-deploy --role-session-name teste
+```
+
+### Deploy manual
 
 Da raiz do repositório:
 
