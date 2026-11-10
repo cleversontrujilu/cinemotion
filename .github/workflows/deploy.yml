@@ -34,7 +34,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::576060958067:role/cinemotion-github-deploy
           role-session-name: cinemotion-deploy-${{ github.ref_name }}

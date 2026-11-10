@@ -3,9 +3,13 @@
 # pelo gfrf/gfhf do git flow) podem assumir o role. PRs e pushes de branch não acessam a AWS.
 
 variable "github_repo" {
-  description = "Repositório (dono/nome) autorizado a fazer deploy."
+  description = <<-EOT
+    Repositório autorizado a fazer deploy, como aparece no `sub` do token OIDC do GitHub:
+    dono e repositório com os ids numéricos (<dono>@<id>/<repo>@<id>). Os ids são
+    imutáveis: um repositório recriado com o mesmo nome não herda o acesso.
+  EOT
   type        = string
-  default     = "cleversontrujilu/cinemotion"
+  default     = "cleversontrujilu@26672570/cinemotion@1451991967"
 }
 
 data "aws_caller_identity" "current" {}
