@@ -34,3 +34,4 @@ docs/model/model_fixed_*.dbm
 
 # OpenTofu: zip das Lambdas gerado no plan/apply
 infra/.build/
+*.plan
