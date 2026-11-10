@@ -13,7 +13,9 @@ Em cada distribuição, `/api/*` vai para o API Gateway da sua API, sem cache e 
 
 O banco é o RDS PostgreSQL 18 que já existe na conta. Ele é público e as Lambdas ficam fora da VPC, conectando com `sslmode=verify-full`. A CA do RDS vem de `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem`.
 
-O state é local (`infra/terraform.tfstate`, ignorado pelo git) e **contém segredos**: as `DATABASE_URL` lidas do SSM e os `JWT_SECRET` gerados aqui. Não versione esse arquivo nem o compartilhe. Se ele for perdido, um novo apply gera outros segredos JWT, e os tokens emitidos até então deixam de valer.
+O state fica no S3, em `s3://cinemotion-tfstate/infra/terraform.tfstate`, com lock nativo (um arquivo `.tflock` ao lado, sem DynamoDB). Assim a sua máquina e o GitHub Actions trabalham sobre o mesmo state. Ele **contém segredos** (as `DATABASE_URL` lidas do SSM e os `JWT_SECRET` gerados aqui), por isso o bucket é privado, criptografado e só aceita TLS. O bucket também é versionado: uma versão antiga do state pode ser recuperada por até 90 dias.
+
+O bucket é criado por [`bootstrap/`](bootstrap/), que tem o próprio state local (sem segredos). Ele só precisa ser aplicado de novo se o bucket mudar.
 
 ## Uma vez só
 
@@ -49,7 +51,9 @@ O state é local (`infra/terraform.tfstate`, ignorado pelo git) e **contém segr
 
    Para trocar uma senha depois, use `--overwrite` e rode o apply de novo.
 
-3. `cd infra && tofu init`
+3. **Bucket do state**, se ainda não existir: `cd infra/bootstrap && tofu init && AWS_PROFILE=homeleft tofu apply`.
+
+4. `cd infra && AWS_PROFILE=homeleft tofu init`
 
 ## A cada deploy
 

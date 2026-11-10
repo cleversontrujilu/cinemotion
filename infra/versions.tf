@@ -1,8 +1,16 @@
 terraform {
   required_version = ">= 1.10"
 
-  # State local (terraform.tfstate, ignorado pelo git). Ele guarda os segredos lidos do
-  # SSM e os JWT_SECRET gerados: não versionar nem compartilhar.
+  # State no S3 (bucket criado por infra/bootstrap), com lock nativo por arquivo .tflock.
+  # Ele guarda os segredos lidos do SSM e os JWT_SECRET gerados: o bucket é privado,
+  # criptografado e versionado, e só a máquina do dono e o role do GitHub Actions o leem.
+  backend "s3" {
+    bucket       = "cinemotion-tfstate"
+    key          = "infra/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 
   required_providers {
     aws = {
