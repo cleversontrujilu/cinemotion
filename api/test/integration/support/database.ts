@@ -52,6 +52,7 @@ async function temporaryDatabaseOn(maintenanceUrl: string) {
   const admin = new pg.Client({ connectionString: maintenanceUrl });
   await admin.connect();
   await admin.query(`CREATE DATABASE ${name}`);
+  await ensureAppRoles(admin);
   await admin.end();
 
   const url = new URL(maintenanceUrl);
@@ -66,6 +67,27 @@ async function temporaryDatabaseOn(maintenanceUrl: string) {
       await client.end();
     },
   };
+}
+
+/**
+ * Os roles da aplicação são do servidor, não do banco. Com TEST_DATABASE_URL, os arquivos
+ * de teste rodam em paralelo no mesmo servidor, e duas migrations 0001 simultâneas podiam
+ * ver o role ausente e tentar criá-lo ao mesmo tempo (duplicate key em pg_authid). Aqui
+ * eles são criados um de cada vez, sob um advisory lock no banco de manutenção, que é o
+ * mesmo para todos os arquivos; a migration encontra os roles e pula o CREATE ROLE.
+ */
+async function ensureAppRoles(maintenance: pg.Client) {
+  await maintenance.query(`
+    DO $$
+    BEGIN
+      PERFORM pg_advisory_xact_lock(hashtext('cinemotion_test_roles'));
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cinemotion_admin') THEN
+        CREATE ROLE cinemotion_admin LOGIN;
+      END IF;
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cinemotion_customer') THEN
+        CREATE ROLE cinemotion_customer LOGIN;
+      END IF;
+    END $$`);
 }
 
 export function poolFor(url: string): pg.Pool {
