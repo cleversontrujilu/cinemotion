@@ -17,7 +17,18 @@ O state é local (`infra/terraform.tfstate`, ignorado pelo git) e **contém segr
 
 ## Uma vez só
 
-1. **Senha dos roles da aplicação.** A migration `0001` cria `cinemotion_customer` e `cinemotion_admin` sem senha. Conectado ao RDS com o usuário dono:
+0. **Banco e dono.** A instância é compartilhada com outros projetos, por isso o Cinemotion tem um banco e um usuário dono próprios. Conectado com o usuário master:
+
+   ```sql
+   CREATE ROLE cinemotion LOGIN PASSWORD '<senha-do-dono>' CREATEROLE;
+   CREATE DATABASE cinemotion;
+   GRANT cinemotion TO "DBAMaster";              -- o PG 16+ exige isso para transferir a posse
+   ALTER DATABASE cinemotion OWNER TO cinemotion;
+   ```
+
+   Como dono do banco, o `cinemotion` é dono do schema `public` e pode instalar o `btree_gist`. O `CREATEROLE` serve para a migration `0001` criar os roles da aplicação.
+
+1. **Senha dos roles da aplicação.** A migration `0001` cria `cinemotion_customer` e `cinemotion_admin` sem senha. Depois da primeira migration, conectado ao banco `cinemotion` com o usuário dono:
 
    ```sql
    ALTER ROLE cinemotion_customer PASSWORD '<senha-forte-1>';
@@ -47,7 +58,10 @@ Da raiz do repositório:
 ```sh
 aws sso login --profile homeleft
 
-# 1. Schema: com a credencial do dono, nunca com a das Lambdas.
+# 1. Schema: com a credencial do dono, nunca com a das Lambdas. O `pg` do Node valida o
+#    certificado mesmo com sslmode=require, então ele precisa da CA do RDS
+#    (https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem).
+NODE_EXTRA_CA_CERTS=~/rds-global-bundle.pem \
 MIGRATION_DATABASE_URL='postgres://<dono>:<senha>@<endpoint-rds>:5432/<banco>?sslmode=require' \
   npm run db:migrate -w api
 
