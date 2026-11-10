@@ -6,7 +6,7 @@ Esta pasta cria, em `us-east-1`:
 |---|---|---|
 | Lambda (Node 22, arm64), do mesmo zip | `cinemotion-customer` (`customer.handler`) | `cinemotion-admin` (`admin.handler`) |
 | API Gateway HTTP API, rota `$default` | throttling de 50 req/s | throttling de 10 req/s |
-| Concorrência reservada (= conexões no Postgres) | 20 | 5 |
+| Concorrência reservada (= conexões no Postgres) | sem reserva (ver abaixo) | sem reserva |
 | Bucket S3 privado + CloudFront (OAC) | `web/customer` | `web/admin` |
 
 Em cada distribuição, `/api/*` vai para o API Gateway da sua API, sem cache e com os cabeçalhos do visitante (inclusive `Authorization`). O resto vem do S3. Uma CloudFront Function traduz `/sessao` em `/sessao/index.html`.
@@ -64,6 +64,6 @@ No fim, `tofu output site_urls` mostra o endereço de cada site.
 
 ## Ajustes comuns
 
-- **Conta nova com limite de 10 execuções simultâneas:** a AWS não aceita reservar concorrência nela. Use `reserved_concurrency = { customer = -1, admin = -1 }` num `terraform.tfvars`.
-- **Muitas conexões no RDS:** a soma das concorrências reservadas é o máximo de conexões abertas pelas Lambdas. Ela precisa caber no `max_connections` da instância, contando a folga para o usuário dono.
+- **Concorrência:** a conta tem limite de 10 execuções simultâneas de Lambda, e a AWS exige manter essas 10 livres. Por isso o padrão é sem reserva (`-1`): o próprio limite da conta segura as conexões, com no máximo 10 somando as duas APIs, para um `max_connections` de cerca de 100 no `db.t4g.micro`. Se a cota for aumentada (Service Quotas, `L-B99A9384`), use `reserved_concurrency = { customer = 20, admin = 5 }` num `terraform.tfvars`.
+- **Muitas conexões no RDS:** com reserva, a soma das concorrências reservadas é o máximo de conexões abertas pelas Lambdas. Ela precisa caber no `max_connections` da instância, contando a folga para o usuário dono.
 - **Visitantes no Brasil:** `price_class = "PriceClass_All"` serve a partir de pontos de presença na América do Sul, com custo maior.

@@ -17,9 +17,14 @@ variable "ssm_prefix" {
 }
 
 variable "reserved_concurrency" {
-  description = "Teto de instâncias (= conexões no Postgres) por API. Contas novas têm limite de 10 execuções simultâneas e não aceitam reserva: use -1 nelas."
+  description = <<-EOT
+    Teto de instâncias (= conexões no Postgres) por API; -1 = sem reserva. A conta atual
+    tem limite de 10 execuções simultâneas, e a AWS exige manter 10 livres: não dá para
+    reservar, e o próprio limite da conta segura as conexões (no máximo 10 nas duas APIs).
+    Com a cota aumentada (Service Quotas, L-B99A9384), use { customer = 20, admin = 5 }.
+  EOT
   type        = object({ customer = number, admin = number })
-  default     = { customer = 20, admin = 5 }
+  default     = { customer = -1, admin = -1 }
 }
 
 variable "throttle" {

@@ -39,7 +39,7 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 ### Conexões com o banco
 
 - `pg.Pool` com `max: 1` por instância de Lambda, criado fora do handler.
-- *Reserved concurrency* limitado em cada Lambda (ex.: 20 na cliente, 5 na admin), para não esgotar as conexões do Postgres.
+- *Reserved concurrency* limitado em cada Lambda (ex.: 20 na cliente, 5 na admin), para não esgotar as conexões do Postgres. A conta atual tem limite de 10 execuções simultâneas e não aceita reserva, então hoje esse limite da conta é o teto (10 conexões somando as duas APIs). A reserva é uma variável do OpenTofu, para quando a cota aumentar.
 - Sem RDS Proxy, por custo.
 
 ### Frontends
