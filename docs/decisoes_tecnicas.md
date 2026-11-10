@@ -27,6 +27,8 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 - Região `us-east-1`, a mesma do RDS. O RDS (PostgreSQL 18) é público, e as Lambdas ficam **fora da VPC**: sem NAT nem VPC endpoints, que custariam mais que o projeto inteiro. A conexão usa `sslmode=verify-full`, com a CA da Amazon carregada por `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem`.
 - **Segredos:** a `DATABASE_URL` de cada role fica num parâmetro SecureString do SSM (`/cinemotion/<api>/database-url`), criado fora do repositório. O OpenTofu lê o parâmetro e o passa como variável de ambiente da Lambda, que não acessa o SSM em tempo de execução. Os `JWT_SECRET` são gerados pelo próprio OpenTofu (`random_password`), um por API.
 - **State do OpenTofu no S3** (`cinemotion-tfstate`), com lock nativo (`use_lockfile`, sem DynamoDB). Ele começou local e foi migrado quando o deploy passou para o GitHub Actions, que precisa enxergar o mesmo state. Como o state contém segredos, o bucket é privado, criptografado, versionado e só aceita TLS. O bucket é criado por `infra/bootstrap/`, que guarda um state local próprio e sem segredos.
+- **CI/CD no GitHub Actions**, seguindo o git flow. `ci.yml` roda em pushes e PRs: typecheck, testes da API (com um PostgreSQL 18 como serviço), bundle das Lambdas, build dos sites e `tofu validate`. Ele não acessa a AWS: num repositório público, um `tofu plan` em PR leria os segredos do state. `deploy.yml` roda quando uma tag `x.y.z` é publicada (pelo `gfrf`/`gfhf`), na ordem migrations → build → `tofu apply`.
+- **Sem chave de acesso no GitHub:** o workflow de deploy assume, via OIDC, o role `cinemotion-github-deploy`, que só aceita tokens de tags deste repositório. A policy do role se limita aos recursos `cinemotion-*` onde o serviço permite filtrar por nome; API Gateway e CloudFront usam ids aleatórios e ficam liberados na conta. O provedor OIDC e o role são criados por `infra/bootstrap/`.
 - Os sites são enviados ao S3 pelo próprio `tofu apply`. Os arquivos com hash no nome ficam em cache por um ano, e o resto é servido com `max-age=0`, por isso o deploy não precisa invalidar o CloudFront.
 
 ### APIs
@@ -60,7 +62,7 @@ Vocabulário do domínio: [`GLOSSARY.md`](../GLOSSARY.md). Decisões arquitetura
 - Os roles `cinemotion_admin` e `cinemotion_customer` são criados **sem senha**. A senha é definida fora do repositório (`ALTER ROLE ... PASSWORD`). O `db:reset` define senhas de desenvolvimento só no banco local.
 - O pgModeler (`docs/model/`) passa a ser só o diagrama de referência, e não a fonte do schema.
 - O seed fica separado das migrations (`api/seeds/seed.sql`). `npm run db:reset -w api` recria o banco local, aplica as migrations e o seed.
-- No deploy, as migrations rodam num passo explícito (`npm run db:migrate -w api`) **antes** do `tofu apply`, da máquina local, com uma credencial de *owner* separada dos roles da aplicação. As Lambdas nunca migram o banco.
+- No deploy, as migrations rodam num passo explícito (`npm run db:migrate -w api`) **antes** do `tofu apply`, com a credencial do dono do banco (o usuário `cinemotion`), separada dos roles da aplicação. No GitHub Actions essa credencial vem do SSM (`/cinemotion/owner/database-url`). As Lambdas nunca migram o banco.
 - As chaves primárias usam `uuidv7()`, nativo apenas no **PostgreSQL 18**. Se o banco da AWS for de outra versão, isso é ajustado no deploy.
 - Todo horário é gravado em `timestamptz`.
 
@@ -185,4 +187,3 @@ Erros de reserva:
 - Job de expiração de Reservas (ver ADR 0001).
 - RDS Proxy: a concorrência é limitada direto na Lambda.
 - Domínio próprio: são usadas as URLs padrão da AWS.
-- Pipeline de deploy (GitHub Actions): o deploy é manual (`npm run db:migrate -w api` + `tofu apply`). O pipeline é um diferencial opcional, se houver tempo.

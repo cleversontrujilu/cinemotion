@@ -328,4 +328,5 @@ GLOSSARY.md           vocabulário do domínio
 ## Fluxo de trabalho no Git
 
 - **git flow**: `main` (versões publicadas) e `develop` (integração). Cada funcionalidade nasce numa branch `feature/*` e entra em `develop` ao ser fechada. Versões são tags SemVer sem prefixo (ex.: `1.0.0`).
+- **CI/CD no GitHub Actions**: todo push e PR passa por typecheck, testes da API (com PostgreSQL 18), build dos sites e `tofu validate` ([`ci.yml`](.github/workflows/ci.yml)). Cada tag de versão publicada ao fechar uma release dispara o deploy na AWS ([`deploy.yml`](.github/workflows/deploy.yml)), autenticado por OIDC, sem chave de acesso guardada no GitHub.
 - **Conventional Commits**, em português (`feat(booking): reserva atômica`, `test(booking): concorrência com 10 clientes`). O histórico conta a evolução: base da API → autenticação → catálogo → reservas → documentação.

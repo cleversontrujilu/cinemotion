@@ -51,11 +51,31 @@ O bucket é criado por [`bootstrap/`](bootstrap/), que tem o próprio state loca
 
    Para trocar uma senha depois, use `--overwrite` e rode o apply de novo.
 
-3. **Bucket do state**, se ainda não existir: `cd infra/bootstrap && tofu init && AWS_PROFILE=homeleft tofu apply`.
+3. **Credencial do dono para o CI**, lida só pelo role de deploy:
 
-4. `cd infra && AWS_PROFILE=homeleft tofu init`
+   ```sh
+   aws ssm put-parameter --profile homeleft --type SecureString \
+     --name /cinemotion/owner/database-url \
+     --value 'postgres://cinemotion:<senha-do-dono>@<endpoint-rds>:5432/<banco>?sslmode=verify-full'
+   ```
+
+4. **Bootstrap** (bucket do state, provedor OIDC do GitHub e role `cinemotion-github-deploy`): `cd infra/bootstrap && tofu init && AWS_PROFILE=homeleft tofu apply`.
+
+5. `cd infra && AWS_PROFILE=homeleft tofu init`
 
 ## A cada deploy
+
+Pelo GitHub Actions: ao fechar uma release ou um hotfix (`gfrf`/`gfhf`), a tag `x.y.z` publicada dispara o [`deploy.yml`](../.github/workflows/deploy.yml). Ele assume o role `cinemotion-github-deploy` por OIDC, roda as migrations com a credencial do dono lida do SSM, gera os artefatos e faz o `tofu apply`. Os endereços aparecem no resumo da execução.
+
+Os PRs e os pushes de branch passam pelo [`ci.yml`](../.github/workflows/ci.yml) (typecheck, testes, builds e `tofu validate`), que não acessa a AWS.
+
+Para testar as permissões do role da sua máquina, um administrador da conta pode assumi-lo:
+
+```sh
+aws sts assume-role --profile homeleft --role-arn arn:aws:iam::576060958067:role/cinemotion-github-deploy --role-session-name teste
+```
+
+### Deploy manual
 
 Da raiz do repositório:
 
