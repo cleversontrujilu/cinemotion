@@ -16,6 +16,15 @@ E dois sites, um para cada API, em [`web/`](web/):
 | **Cliente** | `http://localhost:3100` | Ver as sessões por filme e dia, escolher assentos no mapa, reservar (com a contagem dos 10 minutos), confirmar o pagamento simulado, cancelar e ver as próprias reservas |
 | **Administrador** | `http://localhost:3101` | Criar Salas e marcar no mapa os assentos acessíveis e em manutenção; cadastrar Filmes; criar, editar e excluir Sessões |
 
+### No ar
+
+| Site | Endereço | API no mesmo domínio |
+|---|---|---|
+| **Cliente** | https://d1eo4271plxqd8.cloudfront.net | `/api` |
+| **Administrador** | https://d3uf4v01d0e361.cloudfront.net | `/api/admin` |
+
+O banco está populado com o [seed](api/seeds/seed.sql) de demonstração. A senha de todos os usuários é `Senha@123`: `admin@cinemotion.dev` no site do administrador e `ana.souza@email.com` (ou qualquer outro cliente do seed) no do cliente. As Sessões são criadas em datas relativas ao dia em que o seed rodou. Como a infraestrutura foi montada está em [`infra/README.md`](infra/README.md).
+
 - Documentação OpenAPI 3.2: [`docs/swagger.yaml`](docs/swagger.yaml)
 - Collection com os principais fluxos: [`http/cinemotion.http`](http/cinemotion.http) (REST Client) e [`http/cinemotion.postman_collection.json`](http/cinemotion.postman_collection.json) (Postman)
 - Vocabulário do domínio: [`GLOSSARY.md`](GLOSSARY.md)
@@ -308,7 +317,7 @@ api/                  API (Express + TypeScript), um código para as duas Lambda
   test/               unit/ e integration/
 docs/                 decisões técnicas, ADRs, swagger.yaml, modelo do banco
 http/                 collection .http
-infra/                OpenTofu
+infra/                OpenTofu (deploy passo a passo em infra/README.md)
 web/
   shared/             camada Nuxt comum: cliente HTTP, sessão, datas, mapa de assentos
   customer/           site do cliente

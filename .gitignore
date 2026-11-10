@@ -31,3 +31,6 @@ docs/model/model_fixed_*.dbm
 .DS_Store
 .idea/
 *.log
+
+# OpenTofu: zip das Lambdas gerado no plan/apply
+infra/.build/
